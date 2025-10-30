@@ -1,0 +1,360 @@
+import jax
+import jax.numpy as jnp
+from jax import grad, value_and_grad, jit, vmap, block_until_ready, pure_callback
+
+import pickle
+import numpy as np
+import random
+import matplotlib.pyplot as plt
+
+from scipy.stats import bernoulli
+
+from functools import partial
+
+import optax
+
+from jax import config
+config.update("jax_enable_x64", True)
+
+########################################################################################
+
+# use fully auto-encoder to learn the ssb phase of the TFIM DMRG
+# extract X_i and Z_i values from DRGM
+
+# we flatten the depth-2 channel data
+
+# Loss function: L = sqrt(||x_in - x_out||_2) / (# of samples)
+
+########################################################################################
+
+fs = 16
+
+########################################################################################
+
+L = 50
+
+def ave_m(xz_val, L):
+    # first half is X, second half is Z
+    if xz_val.ndim == 1:
+        return np.mean(xz_val[:L])
+    else:
+        return np.mean(xz_val[:, :L], axis=1)
+
+########################################################################################
+
+## data structure: a list of {'g': float, 'val': array (2,L)}
+
+np.random.seed(42985734)
+
+with open('../data/dmrg_xz_data_L50.pkl', 'rb') as f:
+  data = np.array(pickle.load(f))
+np.random.shuffle(data)
+
+test_size = int(len(data)*0.3)
+test_indices = np.random.choice(len(data), test_size, replace=False)
+
+data_test = data[test_indices]
+data_train = np.delete(data, test_indices)
+
+x_train = np.array([d['val'].reshape(-1) for d in data_train])
+# x_train = np.array([d['val'][0] for d in data_train])
+h_train = np.array([d['g'] for d in data_train]).reshape(-1, 1)
+
+x_test = np.array([d['val'].reshape(-1) for d in data_test])
+# x_test = np.array([d['val'][0] for d in data_test])
+h_test = np.array([d['g'] for d in data_test]).reshape(-1, 1)
+
+print(x_train.shape, h_train.shape, x_test.shape, h_test.shape)
+print('training data average magnetization:', np.mean(ave_m(x_train, L)), np.mean(ave_m(x_test, L)))
+print(f'training size is {len(data_train)} and testing size is {len(data_test)}')
+
+########################################################################################
+
+# initialize the auto-encoder
+# define the auto-encoder network depths and width and initialize a network
+
+def init_params(layer_widths, parent_key, scale=0.01):
+  params = []
+  keys = jax.random.split(parent_key, num=(len(layer_widths)-1))
+
+  for in_width, out_width, key in zip(layer_widths[:-1], layer_widths[1:], keys):
+    weight_key, bias_key = jax.random.split(key)
+    params.append([scale * jax.random.normal(weight_key, shape=(in_width, out_width)),
+                   scale * jax.random.normal(bias_key, shape=(out_width,))
+                  ])
+  return params
+
+########################################################################################
+
+def dropout(x, drop_p, rng_key):
+    keep_prob = 1.0 - drop_p
+    bernoulli_list = jax.random.bernoulli(rng_key, keep_prob, shape=x.shape)
+    x = x * bernoulli_list
+    return x
+
+
+def encoder(params, x, drop_p, rng_key):
+    activation = x
+    for w, b in params[0:-1]:
+        activation = jax.nn.relu(jnp.dot(activation, w) + b)
+        rng_key, subkey = jax.random.split(rng_key)
+        activation = dropout(activation, drop_p, subkey)
+
+    w, b = params[-1]
+    latent_representation = jnp.dot(activation, w) + b
+
+    norm = jnp.linalg.norm(latent_representation, axis=1, keepdims=True)
+    return latent_representation / norm
+    # return latent_representation
+
+
+def decoder(params, latent_rep, drop_p, rng_key):
+    activation = latent_rep
+    for w, b in params[0:-1]:
+        activation = jax.nn.relu(jnp.dot(activation, w) + b)
+        rng_key, subkey = jax.random.split(rng_key)
+        activation = dropout(activation, drop_p, subkey)
+    x_out = jnp.dot(activation, params[-1][0]) + params[-1][1]
+    return x_out
+
+
+def autoencoder(params, x, drop_p, rng_key):
+    # assuming symmetric autoencoder
+    mid_index = len(params) // 2
+
+    rng_key, subkey = jax.random.split(rng_key)
+    latent_rep = encoder(params[0:mid_index], x, drop_p, subkey)
+
+    rng_key, subkey = jax.random.split(rng_key)
+    x_out = decoder(params[mid_index:], latent_rep, drop_p, subkey)
+
+    # def acti_loss(x):
+    #   dn = x**2
+    #   dn = jnp.einsum('ij->i', dn)
+    #   return x / jnp.sqrt(dn)[:, np.newaxis]
+    
+    # x_out = acti_loss(x_out)   ## normalize the output
+    return x_out
+
+
+def loss(params, x, drop_p, rng_key):
+    x_out = autoencoder(params, x, drop_p, rng_key)
+    # x_out = decoder(params, x, drop_p, rng_key)
+    l = (x_out - x)**2
+    l = jnp.einsum('ij->i', l)
+    return jnp.mean(jnp.sqrt(l))
+
+
+def update(params, x, opt_state, opt_sgd, drop_p, rng_key):
+    value, grads = jit(value_and_grad(loss, argnums=0))(params, x, drop_p, rng_key)
+    updates, opt_state = opt_sgd.update(grads, opt_state)
+    params_new = optax.apply_updates(params, updates)
+    return params_new, value, grads
+
+########################################################################################
+
+seed = 73832398
+key = jax.random.PRNGKey(seed)
+key, subkey = jax.random.split(key)
+
+layer_widths = [x_train.shape[-1], 25, 5, 25, x_train.shape[-1]] 
+# layer_widths = [x_train.shape[-1], x_train.shape[-1]]
+print('layers:', layer_widths)
+initial_MLP_params = init_params(layer_widths, subkey)
+# print('initial params:', len(initial_MLP_params[0])
+
+########################################################################################
+
+lr = 5e-5
+num_epochs = 10000
+
+drop_p = 0.1
+
+# params = initial_MLP_params
+
+## define optimizer 
+# opt = optax.adam(learning_rate=lr)
+# opt_state = opt.init(params)  
+
+## record the value of loss function during training 
+# loss_list = []
+# m_list = []
+
+# indices = np.random.choice(x_train.shape[0], size=100, replace=False)
+# x_train_selected = x_train[indices]
+# print(x_train_selected.shape, x_train_selected[0].shape)
+
+
+# print('initial loss', loss(params, x_train, drop_p, key))
+# for i in range(num_epochs):
+#   params, loss_new, gradient = update(params, x_train, opt_state, opt, drop_p, key)
+#   loss_list.append(loss_new)
+#   if (i+1) % 100 == 0:
+#     print('epoch=',i, 'loss=',loss_new, # 'gradient=', np.mean(gradient[0]),
+#           'val_loss=', loss(params, x_test, 0, key), 
+#           'magnetization_test=', np.mean(ave_m(autoencoder(params, x_test, 0, key), L)), 
+#           'magnetization_train=', np.mean(ave_m(autoencoder(params, x_train, 0, key), L)),
+#             )
+
+##########################################################################################
+
+# hyper_param = '_'.join(str(e) for e in layer_widths)
+# with open(f'../models/tfimdmrg_AutoEncoder_latentnorm_ssb_nnParams_adam_epoch{num_epochs}_lr{lr}_layersP{hyper_param}.pickle','wb') as f:
+#     pickle.dump(params, f)
+
+##########################################################################################
+
+# plt.figure()
+# plt.plot(loss_list, 'o', color='blue')
+# plt.xlabel('epoch', fontsize=fs)
+# plt.ylabel('loss', fontsize=fs)
+# plt.yscale('log')
+# # plt.savefig(f'../figures/tfim_autoEncoder_ssb_trainingloss_adam_epoch{num_epochs}_layersP{hyper_param}.pdf', bbox_inches='tight')
+# plt.savefig(f'../figures/tfimdmrg_autoEncoder_latentnorm_ssb_trainingloss_adam_epoch{num_epochs}_lr{lr}_layersP{hyper_param}.pdf', bbox_inches='tight')
+
+##########################################################################################
+
+hyper_param = '_'.join(str(e) for e in layer_widths)
+params = pickle.load(open(f'../models/tfimdmrg_AutoEncoder_latentnorm_ssb_nnParams_adam_epoch{num_epochs}_lr{lr}_layersP{hyper_param}.pickle', 'rb'))
+
+##########################################################################################
+
+# print(sum(cal_m_reconstructed(autoencoder(model_params, x_test, 0, key)))/len(x_test))
+# print(loss(model_params, x_train, 0, key))
+
+# x_rc = autoencoder(params, x_test, 0, key)   ## testing mode, set drop_p = 0
+# m_rc = ave_m(x_rc, L)
+# m_test = ave_m(x_test, L)
+# print(np.mean(m_test), np.mean(m_rc))
+
+# plt.figure()
+# plt.plot(h_test.reshape(-1), m_test, 'o', color='blue', label=f'<m>')
+# plt.plot(h_test.reshape(-1), m_rc, 'o', color='orange', label=f'<m>_rec')
+# plt.legend(fontsize=fs-2)
+# plt.xlabel('h', fontsize=fs)
+# plt.ylabel('<m>', fontsize=fs)
+# # # plt.savefig(f'../figures/tfim_autoEncoder_ssb_reconstructed_magnetization_adam_epoch{num_epochs}_layersP{hyper_param}.pdf', bbox_inches='tight')
+# plt.savefig(f'../figures/tfimdmrg_autoEncoder_latentnorm_ssb_reconstructed_magnetization_adam_epoch{num_epochs}_lr{lr}_layersP{hyper_param}.pdf', bbox_inches='tight')
+
+#########################################################################################
+
+# loss v.s. h
+def loss_of_h(params, x, drop_p, rng_key):
+    x_out = autoencoder(params, x, drop_p, rng_key)
+    l = (x_out - x)**2
+    l = jnp.einsum('ij->i', l)
+    return l
+
+loss_h = loss_of_h(params, x_test, 0, key)
+print(loss_h.shape)
+
+plt.figure()
+plt.plot(h_test.reshape(-1), loss_h, 'o', color='blue')
+plt.xlabel('h', fontsize=fs)
+plt.ylabel('loss', fontsize=fs)
+plt.savefig(f'../figures/tfimdmrg_autoEncoder_latentnorm_ssb_reconstructed_testingloss_adam_epoch{num_epochs}_lr{lr}_layersP{hyper_param}.pdf', bbox_inches='tight')
+         
+#########################################################################################
+
+# latent space study
+def fetch_latent(params, x, drop_p, rng_key):
+    # assuming symmetric autoencoder
+    mid_index = len(params) // 2
+
+    rng_key, subkey = jax.random.split(rng_key)
+    latent_rep = encoder(params[0:mid_index], x, drop_p, subkey)
+    return latent_rep
+
+# component-wise mean of latent space
+latent = fetch_latent(params, x_test, 0, key)
+component_means = np.mean(latent, axis=0)
+
+# with open(f'../models/tfimdmrg_AutoEncoder_latentnorm_ssb_componentMeans_adam_epoch{num_epochs}_layersP{hyper_param}_latentmeans.pickle','wb') as f:
+#     pickle.dump(component_means, f)
+
+########################################################################################
+
+def pairwise_distances(vectors):
+    norm_vectors = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+
+    # Calculate the difference matrix, and the resulting shape will be (n, n, d)
+    diff = norm_vectors[:, np.newaxis, :] - norm_vectors[np.newaxis, :, :]
+    sq_diff = diff ** 2
+    sum_sq_diff = np.sum(sq_diff, axis=2)
+    distances = np.sqrt(sum_sq_diff)
+
+    # Get the indices for the upper triangle, excluding the diagonal
+    rows, cols = np.triu_indices(n=distances.shape[0], k=1)
+    upper_triangle_elements = distances[rows, cols]
+    return upper_triangle_elements
+
+
+latent = fetch_latent(params, x_test, 0, key)
+# latent = fetch_latent(params, x_train, 0, key)
+pair_diff = pairwise_distances(latent)
+print(np.average(pair_diff))
+
+plt.figure()
+plt.hist(pair_diff, bins=50, color='blue', alpha=0.7)
+plt.xlabel('pairwise distances', fontsize=fs)
+plt.ylabel('frequency', fontsize=fs)
+# plt.savefig(f'../figures/tfim_autoEncoder_ssb_trainlatent_distance_hist_adam_epoch{num_epochs}_layersP{hyper_param}.pdf', bbox_inches='tight')
+plt.savefig(f'../figures/tfimdmrg_autoEncoder_latentnorm_ssb_testlatent_distance_hist_adam_epoch{num_epochs}_lr{lr}_layersP{hyper_param}.pdf', bbox_inches='tight')
+
+########################################################################################
+
+def stats_latent(latent):
+    norm_latent = latent / np.linalg.norm(latent, axis=1, keepdims=True)
+    return np.var(norm_latent, axis=0), np.std(norm_latent, axis=0)
+
+latent = fetch_latent(params, x_test, 0, key)
+# latent = fetch_latent(params, x_train, 0, key)
+var_latent, std_latent = stats_latent(latent)
+print(np.mean(var_latent), np.mean(std_latent), var_latent.shape)
+
+plt.figure()
+plt.plot(var_latent, 'o', color='blue', label='variance')
+plt.xlabel('latent dimension', fontsize=fs)
+plt.ylabel('variance', fontsize=fs)
+# plt.savefig(f'../figures/tfim_autoEncoder_ssb_trainlatent_variance_adam_epoch{num_epochs}_layersP{hyper_param}.pdf', bbox_inches='tight')
+plt.savefig(f'../figures/tfimdmrg_autoEncoder_latentnorm_ssb_testlatent_variance_adam_epoch{num_epochs}_lr{lr}_layersP{hyper_param}.pdf', bbox_inches='tight')
+
+#########################################################################################
+
+# def random_unit_vectors(n, d):
+#     """Generate n random unit vectors in d dimensions."""
+#     vecs = np.random.normal(0, 1, (n, d))
+#     norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+#     return vecs / norms
+
+# # Parameters
+# num_vectors = 1000  # Reduced for computational feasibility in the example
+# dimensions = 5
+
+# # Generate random unit vectors
+# vectors = random_unit_vectors(num_vectors, dimensions)
+
+# # Calculate distances
+# distances = np.sqrt(2 * (1 - np.dot(vectors, vectors.T)))
+# upper_triangle_distances = distances[np.triu_indices(num_vectors, k=1)]
+
+# # Analyze distances
+# print("Mean Distance:", np.mean(upper_triangle_distances))
+# print("Median Distance:", np.median(upper_triangle_distances))
+# print("90th Percentile Distance:", np.percentile(upper_triangle_distances, 90))
+# print("Small Distance Threshold (e.g., 10th Percentile):", np.percentile(upper_triangle_distances, 10))
+
+# # Plot the histogram of the distances
+# plt.figure(figsize=(10, 6))
+# plt.hist(upper_triangle_distances, bins=50, color='blue', alpha=0.7)
+# plt.title('Histogram of Distances Between Random Unit Vectors on a Hypersphere')
+# plt.xlabel('Distance')
+# plt.ylabel('Frequency')
+# plt.grid(True)
+# plt.savefig('../figures/histogram_distances_random_unit_vectors_d=20.png')
+
+## Mean Distance: 1.4049771483137858
+## Median Distance: 1.4145493938115403
+## Average Variance: 0.049949897540107216
+## 90th Percentile Distance: 1.6070694239348111
+## Small Distance Threshold (e.g., 10th Percentile): 1.1906459658262973
