@@ -1,12 +1,15 @@
 #!/bin/bash
-#SBATCH --job-name=xxz_active
+#SBATCH --job-name=xxz_dmrg_active
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
-#SBATCH --time=12:00:00
-#SBATCH --output=logs/xxz_active_%j.out
-#SBATCH --error=logs/xxz_active_%j.err
+#SBATCH --time=1-00:00:00
+#SBATCH --output=diffphase/logs/xxz_dmrg_active_%j.out
+#SBATCH --error=diffphase/logs/xxz_dmrg_active_%j.err
+
+module purge
+source /cm/shared/apps/anaconda3/2023.07-2/etc/profile.d/conda.sh
 
 cd ~/diffphase/diff_phase
 git fetch origin main
@@ -15,9 +18,5 @@ git sparse-checkout set xxz_dmrg
 git checkout main
 git pull origin main
 
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate jaxgpu
-
-cd xxz_dmrg
-python main_active_phase.py
+python xxz_dmrg/scripts/main_active_phase.py
 
