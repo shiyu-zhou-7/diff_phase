@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=xxz_dmrg_active
+#SBATCH --partition=defq
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -10,14 +11,15 @@
 
 module purge
 source /cm/shared/apps/anaconda3/2023.07-2/etc/profile.d/conda.sh
+conda activate jaxgpu
 
-cd ~/diffphase/diff_phase
+cd /home/szhou3/diffphase/diff_phase
 git fetch origin main
 git sparse-checkout init --cone
 git sparse-checkout set xxz_dmrg
 git checkout main
 git pull origin main
 
-cd xxz_dmrg/scripts
+cd /home/szhou3/diffphase/diff_phase/scripts
 python main_active_phase.py
 
