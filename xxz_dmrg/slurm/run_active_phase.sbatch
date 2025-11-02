@@ -43,7 +43,7 @@ echo "== which python =="
 which python
 python -c "import sys; print('python version:', sys.version)"
 
-cd /home/szhou3/diffphase/diff_phase/scripts
+cd /home/szhou3/diffphase/diff_phase/xxz_dmrg/scripts
 ls -l
 python main_active_phase.py
 
