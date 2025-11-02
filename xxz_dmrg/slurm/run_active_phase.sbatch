@@ -18,5 +18,6 @@ git sparse-checkout set xxz_dmrg
 git checkout main
 git pull origin main
 
-python xxz_dmrg/scripts/main_active_phase.py
+cd ~/diffphase/diff_phase/scripts
+python main_active_phase.py
 
