@@ -152,7 +152,7 @@ class DMRG:
 
         self.renvs[(i - 1) % self.L] = renv_new
 
-@jax.jit(static_argnames=['k'])
+# @jax.jit(static_argnames=['k'])
 def lanczos(A, v0, *, k):
     """
     Lanczos algorithm to approximate the smallest eigenvalue of a symmetric matrix `A`.
