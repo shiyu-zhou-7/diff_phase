@@ -100,66 +100,66 @@ class MPS:
         return oldSV, Sj
 
 
-def split_and_truncate(theta, shape, chi_max, eps=1.e-14):
-    """ Splits theta, performs an SVD, and trims the matrices to chi_max. """
-    chiL, dL, dR, chiR = shape
-    theta_matrix = theta.reshape((chiL * dL, chiR * dR))
-    U, Sfull, V = svd(theta_matrix, full_matrices=False)
-    
-    # chi_keep = jnp.sum(Sfull > eps)  # Number of singular values > eps
-    # chi_keep = min(chi_keep, chi_max)
-    chi_keep = chi_max
-    
-    A = U[:, :chi_keep]
-    B = V[:chi_keep, :]
-    S = Sfull[:chi_keep]
-    S = S / jnp.linalg.norm(S)  # Normalize Schmidt values
-    
-    A = A.reshape([chiL, dL, chi_keep])
-    B = B.reshape([chi_keep, dR, chiR])
-    return A, S, B
-
-
-# def split_and_truncate(theta, shape, chi_max, eps=1e-14):
-#     """
-#     JAX/JIT-safe SVD split:
-#       • Uses static slice extents (no traced slicing).
-#       • Pads to fixed chi_max so shapes are static.
-#       • Masks tiny singular values instead of changing rank.
-#     """
+# def split_and_truncate(theta, shape, chi_max, eps=1.e-14):
+#     """ Splits theta, performs an SVD, and trims the matrices to chi_max. """
 #     chiL, dL, dR, chiR = shape
 #     theta_matrix = theta.reshape((chiL * dL, chiR * dR))
+#     U, Sfull, V = svd(theta_matrix, full_matrices=False)
+    
+#     chi_keep = jnp.sum(Sfull > eps)  # Number of singular values > eps
+#     chi_keep = min(chi_keep, chi_max)
+#     # chi_keep = chi_max
+    
+#     A = U[:, :chi_keep]
+#     B = V[:chi_keep, :]
+#     S = Sfull[:chi_keep]
+#     S = S / jnp.linalg.norm(S)  # Normalize Schmidt values
+    
+#     A = A.reshape([chiL, dL, chi_keep])
+#     B = B.reshape([chi_keep, dR, chiR])
+#     return A, S, B
 
-#     U, S, Vh = jnp.linalg.svd(theta_matrix, full_matrices=False)
-#     # All these are static Python ints:
-#     ncols_U = U.shape[1]
-#     nrows_V = Vh.shape[0]
-#     # Choose a static slice width:
-#     k_static = min(chi_max, ncols_U, nrows_V)
 
-#     # Static slices only:
-#     U_k = U[:, :k_static]          # (chiL*dL, k_static)
-#     S_k = S[:k_static]             # (k_static,)
-#     V_k = Vh[:k_static, :]         # (k_static, chiR*dR)
+def split_and_truncate(theta, shape, chi_max, eps=1e-14):
+    """
+    JAX/JIT-safe SVD split:
+      • Uses static slice extents (no traced slicing).
+      • Pads to fixed chi_max so shapes are static.
+      • Masks tiny singular values instead of changing rank.
+    """
+    chiL, dL, dR, chiR = shape
+    theta_matrix = theta.reshape((chiL * dL, chiR * dR))
 
-#     # Pad to chi_max for static output shapes:
-#     pad_cols = chi_max - k_static
-#     if pad_cols > 0:
-#         U_k = jnp.pad(U_k, ((0, 0), (0, pad_cols)))
-#         S_k = jnp.pad(S_k, (0, pad_cols))
-#         V_k = jnp.pad(V_k, ((0, pad_cols), (0, 0)))
+    U, S, Vh = jnp.linalg.svd(theta_matrix, full_matrices=False)
+    # All these are static Python ints:
+    ncols_U = U.shape[1]
+    nrows_V = Vh.shape[0]
+    # Choose a static slice width:
+    k_static = min(chi_max, ncols_U, nrows_V)
 
-#     # Mask tiny singular values (pure JAX math, no Python conditionals)
-#     S_k = S_k * (S_k > eps)
+    # Static slices only:
+    U_k = U[:, :k_static]          # (chiL*dL, k_static)
+    S_k = S[:k_static]             # (k_static,)
+    V_k = Vh[:k_static, :]         # (k_static, chiR*dR)
 
-#     # Normalize Schmidt values stably
-#     S_norm = jnp.linalg.norm(S_k) + 1e-12
-#     S_k = S_k / S_norm
+    # Pad to chi_max for static output shapes:
+    pad_cols = chi_max - k_static
+    if pad_cols > 0:
+        U_k = jnp.pad(U_k, ((0, 0), (0, pad_cols)))
+        S_k = jnp.pad(S_k, (0, pad_cols))
+        V_k = jnp.pad(V_k, ((0, pad_cols), (0, 0)))
 
-#     # Reshape to fixed dims (all static now)
-#     A = U_k.reshape(chiL, dL, chi_max)
-#     B = V_k.reshape(chi_max, dR, chiR)
-#     return A, S_k, B
+    # Mask tiny singular values (pure JAX math, no Python conditionals)
+    S_k = S_k * (S_k > eps)
+
+    # Normalize Schmidt values stably
+    S_norm = jnp.linalg.norm(S_k) + 1e-12
+    S_k = S_k / S_norm
+
+    # Reshape to fixed dims (all static now)
+    A = U_k.reshape(chiL, dL, chi_max)
+    B = V_k.reshape(chi_max, dR, chiR)
+    return A, S_k, B
 
 
 def get_random_MPS(L, d, bond_dim = 2, bc="finite", seed=None):
