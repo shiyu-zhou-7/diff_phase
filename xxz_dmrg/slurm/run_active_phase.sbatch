@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=xxz_dmrg_active
-#SBATCH --partition=longq
+#SBATCH --partition=h200q
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
