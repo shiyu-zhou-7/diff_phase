@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=xxz_dmrg_active
-#SBATCH --partition=h200q
+#SBATCH --partition=longq
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-####SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=1-00:00:00
 #SBATCH --output=/home/szhou3/diffphase/logs/xxz_dmrg_active_%j.out
