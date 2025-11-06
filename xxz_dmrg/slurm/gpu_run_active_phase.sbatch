@@ -17,5 +17,14 @@ module purge
 source /cm/shared/apps/anaconda3/2023.07-2/etc/profile.d/conda.sh
 conda activate test
 
+# === Git pull ===
+cd /home/szhou3/diffphase/diff_phase
+git fetch origin main
+git sparse-checkout init --cone
+git sparse-checkout set xxz_dmrg
+git checkout main
+git pull origin main
+
+# === run ===
 cd /home/szhou3/diffphase/gpu_trial
 python test.py
