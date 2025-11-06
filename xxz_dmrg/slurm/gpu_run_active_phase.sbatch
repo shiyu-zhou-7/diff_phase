@@ -27,4 +27,4 @@ git pull origin main
 
 # === run ===
 cd /home/szhou3/diffphase/diff_phase/xxz_dmrg/scripts
-python main_active_phase.py
+python main_train_ae.py
