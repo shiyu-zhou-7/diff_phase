@@ -26,5 +26,5 @@ git checkout main
 git pull origin main
 
 # === run ===
-cd /home/szhou3/diffphase/gpu_trial
-python test.py
+cd /home/szhou3/diffphase/diff_phase/xxz_dmrg/scripts
+python main_active_phase.py
