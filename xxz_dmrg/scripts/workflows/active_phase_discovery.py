@@ -84,7 +84,6 @@ def active_phase_discovery(L=20, init_delta=-1.5, init_h=0.3,
         init_ae_params = train_autoencoder(init_ae_params, X, epochs=ae_cfg.epochs, lr=ae_cfg.lr, weight_decay=ae_cfg.weight_decay, drop_p=ae_cfg.dropout_p, center_coeff=act_cfg.center_coeff, seed=ae_cfg.seed)
         Z = fetch_latent(init_ae_params, X, jax.random.PRNGKey(0))
         ferro_centroid = jnp.mean(Z, axis=0)
-    print(f'Ferro centroid: {ferro_centroid}')
 
     # dmrg optimizer
     ham_param = jnp.array([init_delta, init_h], dtype=jnp.float64)
