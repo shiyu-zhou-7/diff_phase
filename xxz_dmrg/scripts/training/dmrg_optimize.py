@@ -1,4 +1,5 @@
 # training/dmrg_optimize.py
+from venv import logger
 import jax
 import jax.numpy as jnp
 from typing import Tuple
@@ -7,6 +8,7 @@ import optax
 
 from dmrg.dmrg import run_dmrg 
 from models.autoencoder import fetch_latent
+
 from dmrg.hamiltonians import XXZhX
 
 def _latent_loss(delta_h: jnp.ndarray,            # shape (2,) = (Δ, h)
@@ -40,6 +42,7 @@ def _latent_loss(delta_h: jnp.ndarray,            # shape (2,) = (Δ, h)
     diff = z - ferro_centroid
     return jnp.sum(diff * diff)
 
+
 def make_opt_step(opt, L, dmrg_cfg, observables_list):
     """
     Returns a single (Δ,h) optimizer step using JAX value_and_grad on the DMRG+AE loss.
@@ -49,8 +52,7 @@ def make_opt_step(opt, L, dmrg_cfg, observables_list):
     sweeps    = int(dmrg_cfg.sweeps)
     max_bond  = int(dmrg_cfg.max_bond)
 
-
-    @jax.jit
+    # @jax.jit
     def opt_step(delta_h: jnp.ndarray,
                   ae_params,
                   ferro_centroid: jnp.ndarray,
