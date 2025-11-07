@@ -26,5 +26,6 @@ git checkout main
 git pull origin main
 
 # === run ===
-cd /home/szhou3/diffphase/diff_phase/xxz_dmrg/scripts
+cd /home/szhou3/diffphase/diff_phase/xxz_dmrg/scripts/
+echo "...Starting active phase discovery script..."
 python main_active_phase.py
