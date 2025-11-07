@@ -4,6 +4,10 @@ from datetime import datetime
 from jax import config
 config.update("jax_enable_x64", True)
 
+# Get current time string
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+print(f'Timestamp: {timestamp}')
+
 # GPU configuration via a single default_device context
 import jax
 from contextlib import nullcontext
@@ -17,9 +21,6 @@ else:
 from workflows.active_phase_discovery import active_phase_discovery
 from utils.io import save_pickle, load_pickle
 from configs.config import AEConfig, HamConfig, ActiveConfig, DMRGConfig
-
-# Get current time string
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 with _devctx:
     # Optionally: load a pretrained AE and centroid
