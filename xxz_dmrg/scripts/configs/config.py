@@ -40,7 +40,7 @@ class ActiveConfig:
 @dataclass
 class DMRGConfig:
     max_bond: int = 10          # χ (bond dimension)
-    sweeps: int = 1            # number of finite sweeps
+    sweeps: int = 10            # number of finite sweeps
     tol: float = 1e-8           # energy convergence tol
     normalize: bool = True
     warm_start: bool = True     # reuse MPS between nearby (Δ,h)
