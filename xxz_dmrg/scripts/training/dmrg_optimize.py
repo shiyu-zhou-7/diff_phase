@@ -38,8 +38,8 @@ def _latent_loss(delta_h: jnp.ndarray,            # shape (2,) = (Δ, h)
     #         ) # shape (len(observables_list),)
 
     # run dmrg_xxz with one-site update rule
-    print(f'using dmrg_xxz with one-site update rule')
-    mps, _ = dmrg_E(L, delta, h, conf=1e-4, test=False, chi_max=5, max_sweep=5)
+    # print(f'using dmrg_xxz with one-site update rule')
+    mps, _ = dmrg_E(L, delta, h, conf=1e-4, test=False, chi_max=dmrg_cfg.max_bond, max_sweep=dmrg_cfg.sweeps)
     obs = jnp.asarray(cal_observables(mps, observables_list))
 
     # default_device context will handle placement
