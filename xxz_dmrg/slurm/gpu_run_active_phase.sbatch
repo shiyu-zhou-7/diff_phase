@@ -20,7 +20,7 @@ conda activate test
 # === Git pull ===
 cd /home/szhou3/diffphase/diff_phase
 git fetch origin main
-git sparse-checkout init --cone
+# git sparse-checkout init --cone
 git sparse-checkout set xxz_dmrg
 git checkout main
 git pull origin main
