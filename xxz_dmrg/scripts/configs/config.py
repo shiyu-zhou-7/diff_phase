@@ -12,7 +12,7 @@ class AEConfig:
     lr: float = 1e-5
     weight_decay: float = 0 # AdamW style
     epochs: int = 50000
-    mini_epochs: int = 5000      # for quick refresh
+    mini_epochs: int = 50000      # for quick refresh
     use_gpu: bool = True         # Enable GPU usage
     batch_size: int = 32         # Batch size for GPU processing
 
@@ -20,7 +20,7 @@ class AEConfig:
 class HamConfig:
     seed: int = 83948
     lr: float = 1e-4
-    max_steps_block: int = 1000
+    max_steps_block: int = 2000
     stall_window: int = 25
     stall_tol_loss: float = 1e-4
     stall_tol_grad: float = 1e-6
@@ -32,15 +32,15 @@ class HamConfig:
 class ActiveConfig:
     sample_radius_delta: float = 0.2
     sample_radius_h: float = 0.2
-    num_samples_when_stalled: int = 100
+    num_samples_when_stalled: int = 1000
     center_coeff: float = 1e-3  # latent variance penalty in AE loss
     nan_jump_scale: float = 2.0   # jump length multiplier along last_dir
     nan_jump_noise: float = 0.05  # fallback random jump (if no last_dir yet)
 
 @dataclass
 class DMRGConfig:
-    max_bond: int = 5          # χ (bond dimension)
-    sweeps: int = 5            # number of finite sweeps
+    max_bond: int = 10          # χ (bond dimension)
+    sweeps: int = 10            # number of finite sweeps
     tol: float = 1e-8           # energy convergence tol
     normalize: bool = True
     warm_start: bool = True     # reuse MPS between nearby (Δ,h)

@@ -25,7 +25,8 @@ from configs.config import AEConfig, HamConfig, ActiveConfig, DMRGConfig
 with _devctx:
     # Optionally: load a pretrained AE and centroid
     try:
-        checkpoint = load_pickle('../models/xxzhdmrg_autoencoder_params.pkl')
+        # checkpoint = load_pickle('../models/xxzhdmrg_autoencoder_params.pkl')
+        checkpoint = load_pickle('../models/xxzhdmrg1site_autoencoder_params_latent5_delta-2.5TO-1.5_h0.0TO0.5_L20.pkl')
         init_params = checkpoint['params']
         ferro_centroid = checkpoint['centroid']
         print('LOADED CHECKPOINT.')
