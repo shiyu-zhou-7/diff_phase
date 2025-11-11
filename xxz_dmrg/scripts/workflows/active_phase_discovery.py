@@ -30,6 +30,7 @@ def sample_params(center_delta, center_h, n, rad_d, rad_h, key):
 
 def generate_data_xxzh(L, deltas, hs, observables_list, dmrg_cfg):
     """ observables_list: [(site, op), ...] """
+    print(f'Generating new data {len(deltas)} for AE learning around delta={deltas} and h= {hs}...')
     rows = []
     for delta, h in zip(np.array(deltas), np.array(hs)):
 

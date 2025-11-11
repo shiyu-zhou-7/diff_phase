@@ -24,7 +24,8 @@ import matplotlib.pyplot as plt
 with _devctx:
     # ----- load ferro dataset -----
     # with open('../data/data_obsZX_dmrg_L=20_ver1.pkl', 'rb') as f:
-    with open('../data/dmrg_data_xxz_dmrg_processed_delta-2.5TO-1.5_h0.0TO0.5_L20_Paulizxy.pkl', 'rb') as f:
+    # with open('../data/dmrg_data_xxz_dmrg_processed_delta-2.5TO-1.5_h0.0TO0.5_L20_Paulizxy.pkl', 'rb') as f:
+    with open('../data/dmrg_data_xxz_dmrg1site_delta-2.5TO-1.5_h0.0TO0.5_L20_n1000_20251111_165934.pkl', 'rb') as f:
     # with open('../data/dmrg_data_xxz_dmrg_delta-2.0TO-1.5_h-3.5TO-1.5_L20.pkl', 'rb') as f:
     # with open('../mps/dmrg_data_xxz_dmrg_delta-2.0TO-1.5_h-3.5TO-1.5_L20.pkl', 'rb') as f:
         data = np.array(pickle.load(f))
@@ -73,7 +74,7 @@ with _devctx:
     plt.legend(fontsize=fs-2)
     plt.xlabel('delta', fontsize=fs)
     plt.ylabel('<O>', fontsize=fs)
-    plt.savefig(f'../figures/xxzhdmrgAutoEncoder_ferro_reconstructed.pdf', bbox_inches='tight')
+    plt.savefig(f'../figures/xxzhdmrgAutoEncoder_ferro_reconstructed_dmrg1site.pdf', bbox_inches='tight')
 
-    save_pickle({'params': params, 'centroid': np.array(ferro_centroid)}, '../models/xxzhdmrg_autoencoder_params_latent5_delta-2.5TO-1.5_h0.0TO0.5_L20_Paulizx.pkl')
-    print('Saved AE params to ../models/xxzhdmrg_autoencoder_params_latent5_delta-2.5TO-1.5_h0.0TO0.5_L20_Paulizx.pkl')
+    save_pickle({'params': params, 'centroid': np.array(ferro_centroid)}, '../models/xxzhdmrg1site_autoencoder_params_latent5_delta-2.5TO-1.5_h0.0TO0.5_L20.pkl')
+    print('Saved AE params to ../models/xxzhdmrg1site_autoencoder_params_latent5_delta-2.5TO-1.5_h0.0TO0.5_L20.pkl')
