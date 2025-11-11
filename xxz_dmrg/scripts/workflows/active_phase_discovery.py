@@ -18,6 +18,7 @@ from utils.io import save_pickle
 from utils.plotting import plot_trajectory
 
 from dmrg1.dmrg_xxz import Pauli_MPO
+from dmrg1.run_xxz import * 
 
 
 def sample_params(center_delta, center_h, n, rad_d, rad_h, key):
