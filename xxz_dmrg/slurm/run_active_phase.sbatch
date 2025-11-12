@@ -25,7 +25,7 @@ git checkout main
 git pull origin main
 
 
-cd /home/szhou3/diffphase/gpu_trial
+cd /home/szhou3/diffphase/diff_phase/xxz_dmrg/scripts/
 export JAX_PLATFORMS=cpu
-python test.py
+python -u main_active_phase.py
 
