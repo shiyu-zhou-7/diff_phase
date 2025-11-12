@@ -36,8 +36,8 @@ with _devctx:
     test_size = int(len(data) * ratio)
     idx = np.random.choice(len(data), test_size, replace=False)
     train = np.delete(data, idx)
-    X_train = np.array([d['obs'][:40].real for d in train])
-    X_test  = np.array([d['obs'][:40].real for d in data[idx]])
+    X_train = np.array([d['obs'][:60].real for d in train])
+    X_test  = np.array([d['obs'][:60].real for d in data[idx]])
 
     D = X_train.shape[1]
     print(f'Train size: {X_train.shape}, Test size: {X_test.shape}, D = {D}')

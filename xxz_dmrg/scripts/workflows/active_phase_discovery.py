@@ -97,7 +97,7 @@ def active_phase_discovery(L=20, init_delta=-1.5, init_h=0.3,
     # init AE if needed
     if init_ae_params is None:
         print('Initializing initial autoencoder parameters...')
-        layers = [D, 40, ae_cfg.latent_dim, 40, D]
+        layers = [D, 20, ae_cfg.latent_dim, 20, D]
         key, sub = jax.random.split(key)
         init_ae_params = init_ae(layers, sub)
 
@@ -227,6 +227,6 @@ def active_phase_discovery(L=20, init_delta=-1.5, init_h=0.3,
     deltas = [p[0] for p in history['ham_params']]
     hs = [p[1] for p in history['ham_params']]
     print('Plotting Hamiltonian parameters history...')
-    plot_trajectory(deltas, hs, f'../models/active_phase_ham_params_history_{timestamp}.png')
+    plot_trajectory(deltas, hs, f'../figures/active_phase_ham_params_history_{timestamp}.png')
 
     return init_ae_params, ferro_centroid, history
