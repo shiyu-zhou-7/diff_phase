@@ -25,11 +25,14 @@ from configs.config import AEConfig, HamConfig, ActiveConfig, DMRGConfig
 with _devctx:
     # Optionally: load a pretrained AE and centroid
     try:
-        # checkpoint = load_pickle('../models/xxzhdmrg_autoencoder_params.pkl')
-        checkpoint = load_pickle('../models/xxzhdmrg1site_autoencoder_params_latent5_delta-2.5TO-1.5_h0.0TO0.5_L20.pkl')
+        # file = '../models/xxzhdmrg_autoencoder_params.pkl'
+        file = '../models/xxzhdmrg1site_autoencoder_params_latent5_delta-2.5TO-1.5_h0.0TO0.5_L20.pkl'
+        checkpoint = load_pickle(file)
+        # checkpoint = load_pickle('../models/xxzhdmrg1site_autoencoder_params_latent5_delta-2.5TO-1.5_h0.0TO0.5_L20.pkl')
         init_params = checkpoint['params']
         ferro_centroid = checkpoint['centroid']
-        print('LOADED CHECKPOINT.')
+        print(f'LOADED CHECKPOINT file: {file}.')
+        print(f"Centriod shape: {ferro_centroid.shape}")
     except Exception:
         print('NO CHECKPOINT FOUND. INITIALIZING FROM SCRATCH.')
         init_params = None
