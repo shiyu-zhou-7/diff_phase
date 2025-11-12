@@ -28,5 +28,4 @@ git pull origin main
 # === run ===
 cd /home/szhou3/diffphase/diff_phase/xxz_dmrg/scripts/
 echo "...Starting active phase discovery script..."
-export JAX_PLATFORMS=cpu
 python -u main_active_phase.py
