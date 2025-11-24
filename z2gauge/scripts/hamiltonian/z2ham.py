@@ -1,5 +1,9 @@
 import jax.numpy as jnp
+import numpy as np  # Only for pickle serialization
 from functools import reduce
+import pickle
+import os
+from tqdm import tqdm
 
 
 def pauli_z():
@@ -345,16 +349,13 @@ if __name__ == "__main__":
 
 
 if __name__ == "__main__":
-    import pickle
-    import numpy as np
-    from tqdm import tqdm
     
     print("=" * 70)
     print("CONFINED PHASE GROUND STATE GENERATION")
     print("=" * 70)
     
     # Configuration
-    Lx, Ly = 3, 3  # Lattice size
+    Lx, Ly = 2, 3  # Lattice size
     n_qubits = 2 * Lx * Ly
     dim = 2**n_qubits
     
@@ -382,7 +383,7 @@ if __name__ == "__main__":
     print("  Done!")
     
     # Generate h values
-    h_values = np.linspace(h_min, h_max, n_samples)
+    h_values = jnp.linspace(h_min, h_max, n_samples)
     
     # Generate ground states
     data = []
@@ -398,9 +399,9 @@ if __name__ == "__main__":
         ground_state = eigenvectors[:, 0]
         ground_energy = eigenvalues[0]
         
-        # Store data
+        # Store data (convert JAX array to numpy for pickle serialization)
         data.append({
-            'v': np.array(ground_state),  # Ground state wavefunction
+            'v': np.array(ground_state),  # Ground state wavefunction (converted to numpy for saving)
             'E': float(ground_energy),     # Ground state energy
             'j_a': j_a_fixed,              # Star operator coupling
             'h': float(h),                 # Transverse field strength
@@ -410,7 +411,8 @@ if __name__ == "__main__":
         })
     
     # Save data
-    output_file = f'../data/data_confined_{Lx}x{Ly}.pkl'
+    output_file = f'../../data/data_confined_{Lx}x{Ly}.pkl'
+    
     print("\n" + "-" * 70)
     print(f"Saving data to {output_file}...")
     
@@ -430,20 +432,26 @@ if __name__ == "__main__":
     energies = [d['E'] for d in data]
     h_vals = [d['h'] for d in data]
     
-    print(f"Energy range: [{min(energies):.6f}, {max(energies):.6f}]")
-    print(f"h range: [{min(h_vals):.4f}, {max(h_vals):.4f}]")
-    print(f"Average energy: {np.mean(energies):.6f} ± {np.std(energies):.6f}")
+    # Convert to JAX arrays for computation
+    energies_jax = jnp.array(energies)
+    h_vals_jax = jnp.array(h_vals)
+    
+    print(f"Energy range: [{float(jnp.min(energies_jax)):.6f}, {float(jnp.max(energies_jax)):.6f}]")
+    print(f"h range: [{float(jnp.min(h_vals_jax)):.4f}, {float(jnp.max(h_vals_jax)):.4f}]")
+    print(f"Average energy: {float(jnp.mean(energies_jax)):.6f} ± {float(jnp.std(energies_jax)):.6f}")
     
     # Verify a few samples are in confined phase
     print("\n" + "-" * 70)
     print("Verifying phases (checking first 3 samples)...")
     for i in [0, n_samples//2, n_samples-1]:
-        state = data[i]['v'] / np.linalg.norm(data[i]['v'])
+        # Convert to JAX array and normalize using JAX
+        state = jnp.array(data[i]['v'])
+        state = state / jnp.linalg.norm(state)
         h_val = data[i]['h']
         
         # Check Wilson loop (use largest non-contractible loop)
         W = wilson_loop(Lx, Ly, 0, 0, Lx, Ly)  # Full system loop
-        w_expect = float(expectation_value(W, jnp.array(state)))
+        w_expect = float(expectation_value(W, state))
         
         phase_type = "Confined" if abs(w_expect) < 0.1 else "Deconfined"
         print(f"  Sample {i+1} (h={h_val:.2f}): Wilson loop = {w_expect:.4f} → {phase_type}")
