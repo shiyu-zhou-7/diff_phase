@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 # ----- load ferro dataset -----
 Lx = 2
-Ly = 1
+Ly = 3
 N = 2 * Lx * Ly
 print(f"Lattice size: {Lx}x{Ly}, Qubits: {N}")
 
@@ -146,8 +146,8 @@ plt.grid(True, alpha=0.3)
 plt.legend(fontsize=fs-2)
 
 plt.tight_layout()
-plt.savefig(f'../figures/z2gauge_wilson_entropy_reconstruction_epoch{ae_cfg.epochs}.pdf', bbox_inches='tight')
-print(f"\nPlot saved to ../figures/z2gauge_wilson_entropy_reconstruction_epoch{ae_cfg.epochs}.pdf")
+plt.savefig(f'../figures/z2gauge_wilson_entropy_reconstruction_{Lx}x{Ly}_epoch{ae_cfg.epochs}.pdf', bbox_inches='tight')
+print(f"\nPlot saved to ../figures/z2gauge_wilson_entropy_reconstruction_{Lx}x{Ly}_epoch{ae_cfg.epochs}.pdf")
 
 save_pickle({'params': params, 'centroid': np.array(ferro_centroid)}, f'../models/z2gauge_autoencoder_params_Lx{Lx}Ly{Ly}.pkl')
 print('Saved AE params to ../models/z2gauge_autoencoder_params_Lx{Lx}Ly{Ly}.pkl')
