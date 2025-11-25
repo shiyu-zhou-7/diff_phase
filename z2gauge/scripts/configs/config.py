@@ -6,11 +6,11 @@ from dataclasses import dataclass
 @dataclass
 class AEConfig:
     seed: int = 45283497
-    latent_dim: int = 10
+    latent_dim: int = 32
     dropout_p: float = 0.05
     lr: float = 1e-4
     weight_decay: float = 1e-4  # AdamW style
-    epochs: int = 10000
+    epochs: int = 1000
     mini_epochs: int = 5000      # for quick refresh
 
 @dataclass
