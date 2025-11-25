@@ -19,7 +19,7 @@ Ly = 3
 N = 2 * Lx * Ly
 print(f"Lattice size: {Lx}x{Ly}, Qubits: {N}")
 
-with open(f'../data/data_confined_{Lx}x{Ly}.pkl', 'rb') as f:
+with open(f'../data/data_confined_{Lx}x{Ly}_n1000.pkl', 'rb') as f:
     data = np.array(pickle.load(f))
 np.random.shuffle(data)
 
@@ -150,4 +150,4 @@ plt.savefig(f'../figures/z2gauge_wilson_entropy_reconstruction_{Lx}x{Ly}_epoch{a
 print(f"\nPlot saved to ../figures/z2gauge_wilson_entropy_reconstruction_{Lx}x{Ly}_epoch{ae_cfg.epochs}.pdf")
 
 save_pickle({'params': params, 'centroid': np.array(ferro_centroid)}, f'../models/z2gauge_autoencoder_params_Lx{Lx}Ly{Ly}.pkl')
-print('Saved AE params to ../models/z2gauge_autoencoder_params_Lx{Lx}Ly{Ly}.pkl')
+print(f'Saved AE params to ../models/z2gauge_autoencoder_params_Lx{Lx}Ly{Ly}.pkl')
