@@ -14,7 +14,12 @@ from configs.config import AEConfig, ActiveConfig
 import matplotlib.pyplot as plt
 
 # ----- load ferro dataset -----
-with open('../data/data_para.pkl', 'rb') as f:
+Lx = 2
+Ly = 1
+N = 2 * Lx * Ly
+print(f"Lattice size: {Lx}x{Ly}, Qubits: {N}")
+
+with open(f'../data/data_confined_{Lx}x{Ly}.pkl', 'rb') as f:
     data = np.array(pickle.load(f))
 np.random.shuffle(data)
 
@@ -33,7 +38,7 @@ D = 2 ** N
 ae_cfg = AEConfig()
 act_cfg = ActiveConfig()
 key = jax.random.PRNGKey(ae_cfg.seed)
-layers = [D, 256, ae_cfg.latent_dim, 256, D]
+layers = [D, 512, ae_cfg.latent_dim, 512, D]
 key, sub = jax.random.split(key)
 params = init_params(layers, sub)
 
@@ -55,13 +60,15 @@ print("\n" + "=" * 60)
 print("WILSON LOOP AND ENTANGLEMENT ENTROPY ANALYSIS")
 print("=" * 60)
 
-# Infer lattice size from the Hilbert space dimension
-# N is number of qubits, for 2D lattice: N = 2 * Lx * Ly
-Lx = Ly = int(np.sqrt(N / 2))
-print(f"Lattice size: {Lx}x{Ly}, Qubits: {N}")
+# Analyze all test samples (target loop size only)
+n_samples = len(X_test)
+target_loop_size = min(2, Lx, Ly)
+loop_label = f"{target_loop_size}x{target_loop_size}"
+wilson_sample_orig = []
+wilson_sample_rc = []
+entropy_sample_orig = []
+entropy_sample_rc = []
 
-# Analyze a few test samples
-n_samples = min(5, len(X_test))
 for idx in range(n_samples):
     print(f"\n--- Sample {idx+1} ---")
     
@@ -73,95 +80,74 @@ for idx in range(n_samples):
     state_orig = state_orig / jnp.linalg.norm(state_orig)
     state_rc = state_rc / jnp.linalg.norm(state_rc)
     
-    # Calculate Wilson loops for various sizes
-    print("Wilson loops:")
-    for size in range(1, min(Lx, Ly) + 1):
-        W = wilson_loop(Lx, Ly, 0, 0, size, size)
-        w_orig = float(expectation_value(W, state_orig))
-        w_rc = float(expectation_value(W, state_rc))
-        print(f"  Size {size}×{size}: Original = {w_orig:.4f}, Reconstructed = {w_rc:.4f}, Δ = {abs(w_orig - w_rc):.4f}")
+    # Target Wilson loop only
+    if target_loop_size > 0:
+        W_target = wilson_loop(Lx, Ly, 0, 0, target_loop_size, target_loop_size)
+        w_orig_target = float(expectation_value(W_target, state_orig))
+        w_rc_target = float(expectation_value(W_target, state_rc))
+        print(f"Wilson loop ({loop_label}): Original = {w_orig_target:.4f}, Reconstructed = {w_rc_target:.4f}, Δ = {abs(w_orig_target - w_rc_target):.4f}")
+        wilson_sample_orig.append(w_orig_target)
+        wilson_sample_rc.append(w_rc_target)
+    else:
+        print("Wilson loop undefined (target size zero).")
     
-    # Calculate entanglement entropy
+    # Entanglement entropy
     subsystem = list(range(N // 2))
     S_orig = float(entanglement_entropy(state_orig, subsystem, N))
     S_rc = float(entanglement_entropy(state_rc, subsystem, N))
     print(f"Entanglement entropy: Original = {S_orig:.4f}, Reconstructed = {S_rc:.4f}, Δ = {abs(S_orig - S_rc):.4f}")
+    entropy_sample_orig.append(S_orig)
+    entropy_sample_rc.append(S_rc)
 
 # Calculate average values across all test samples
 print(f"\n{'='*60}")
 print("AVERAGE OVER ALL TEST SAMPLES")
 print("=" * 60)
 
-wilson_orig = {size: [] for size in range(1, min(Lx, Ly) + 1)}
-wilson_rc = {size: [] for size in range(1, min(Lx, Ly) + 1)}
-entropy_orig = []
-entropy_rc = []
+if wilson_sample_orig:
+    avg_w_orig = np.mean(wilson_sample_orig)
+    std_w_orig = np.std(wilson_sample_orig)
+    avg_w_rc = np.mean(wilson_sample_rc)
+    std_w_rc = np.std(wilson_sample_rc)
+    print(f"Average Wilson loop ({loop_label}): Original = {avg_w_orig:.4f} ± {std_w_orig:.4f}, Reconstructed = {avg_w_rc:.4f} ± {std_w_rc:.4f}")
+else:
+    print("Average Wilson loop: undefined (target size zero).")
 
-for idx in range(len(X_test)):
-    state_orig = X_test[idx] / jnp.linalg.norm(X_test[idx])
-    state_rc = X_rc[idx] / jnp.linalg.norm(X_rc[idx])
-    
-    # Wilson loops
-    for size in range(1, min(Lx, Ly) + 1):
-        W = wilson_loop(Lx, Ly, 0, 0, size, size)
-        w_orig = float(expectation_value(W, state_orig))
-        w_rc = float(expectation_value(W, state_rc))
-        wilson_orig[size].append(w_orig)
-        wilson_rc[size].append(w_rc)
-    
-    # Entanglement entropy
-    subsystem = list(range(N // 2))
-    S_orig = float(entanglement_entropy(state_orig, subsystem, N))
-    S_rc = float(entanglement_entropy(state_rc, subsystem, N))
-    entropy_orig.append(S_orig)
-    entropy_rc.append(S_rc)
-
-print("Average Wilson loop values:")
-for size in range(1, min(Lx, Ly) + 1):
-    avg_orig = np.mean(wilson_orig[size])
-    std_orig = np.std(wilson_orig[size])
-    avg_rc = np.mean(wilson_rc[size])
-    std_rc = np.std(wilson_rc[size])
-    print(f"  Size {size}×{size}: Original = {avg_orig:.4f} ± {std_orig:.4f}, Reconstructed = {avg_rc:.4f} ± {std_rc:.4f}")
-
-avg_entropy_orig = np.mean(entropy_orig)
-std_entropy_orig = np.std(entropy_orig)
-avg_entropy_rc = np.mean(entropy_rc)
-std_entropy_rc = np.std(entropy_rc)
+avg_entropy_orig = np.mean(entropy_sample_orig)
+std_entropy_orig = np.std(entropy_sample_orig)
+avg_entropy_rc = np.mean(entropy_sample_rc)
+std_entropy_rc = np.std(entropy_sample_rc)
 print(f"Average entanglement entropy: Original = {avg_entropy_orig:.4f} ± {std_entropy_orig:.4f}, Reconstructed = {avg_entropy_rc:.4f} ± {std_entropy_rc:.4f}")
 
-# Plot Wilson loop and entanglement entropy: original vs reconstructed
+# Plot Wilson loop and entanglement entropy per sample
 plt.figure(figsize=(12, 5))
 fs = 15
+sample_indices = np.arange(len(entropy_sample_orig))
 
 plt.subplot(1, 2, 1)
-sizes = list(range(1, min(Lx, Ly) + 1))
-avg_orig = [np.mean(wilson_orig[size]) for size in sizes]
-std_orig = [np.std(wilson_orig[size]) for size in sizes]
-avg_rc = [np.mean(wilson_rc[size]) for size in sizes]
-std_rc = [np.std(wilson_rc[size]) for size in sizes]
-
-plt.errorbar(sizes, avg_orig, yerr=std_orig, fmt='o-', capsize=5, label='Original', color='blue', linewidth=2)
-plt.errorbar(sizes, avg_rc, yerr=std_rc, fmt='s--', capsize=5, label='Reconstructed', color='orange', linewidth=2)
-plt.xlabel('Wilson loop size', fontsize=fs)
-plt.ylabel('<W> expectation value', fontsize=fs)
-plt.title('Wilson Loop Comparison', fontsize=fs)
-plt.legend(fontsize=fs-2)
+if wilson_sample_orig:
+    plt.scatter(np.arange(len(wilson_sample_orig)), wilson_sample_orig, color='orange', label='Exact', s=35)
+    plt.scatter(np.arange(len(wilson_sample_rc)), wilson_sample_rc, color='blue', label='Reconstructed', s=35)
+else:
+    plt.text(0.5, 0.5, "Not available", ha='center', va='center', fontsize=fs)
+plt.xlabel('Sample index', fontsize=fs)
+plt.ylabel(f'<W> ({loop_label})', fontsize=fs)
+plt.title(f'Wilson loop ({loop_label}) per sample', fontsize=fs)
 plt.grid(True, alpha=0.3)
+plt.legend(fontsize=fs-2)
 
 plt.subplot(1, 2, 2)
-bins = np.linspace(min(min(entropy_orig), min(entropy_rc)), max(max(entropy_orig), max(entropy_rc)), 20)
-plt.hist(entropy_orig, bins=bins, alpha=0.6, label='Original', color='blue', edgecolor='black')
-plt.hist(entropy_rc, bins=bins, alpha=0.6, label='Reconstructed', color='orange', edgecolor='black')
-plt.xlabel('Entanglement entropy S', fontsize=fs)
-plt.ylabel('Frequency', fontsize=fs)
-plt.title('Entanglement Entropy Distribution', fontsize=fs)
-plt.legend(fontsize=fs-2)
+plt.scatter(sample_indices, entropy_sample_orig, color='orange', label='Exact', s=35)
+plt.scatter(sample_indices, entropy_sample_rc, color='blue', label='Reconstructed', s=35)
+plt.xlabel('Sample index', fontsize=fs)
+plt.ylabel('Entanglement entropy S', fontsize=fs)
+plt.title('Entanglement entropy per sample', fontsize=fs)
 plt.grid(True, alpha=0.3)
+plt.legend(fontsize=fs-2)
 
 plt.tight_layout()
 plt.savefig(f'../figures/z2gauge_wilson_entropy_reconstruction_epoch{ae_cfg.epochs}.pdf', bbox_inches='tight')
 print(f"\nPlot saved to ../figures/z2gauge_wilson_entropy_reconstruction_epoch{ae_cfg.epochs}.pdf")
 
-save_pickle({'params': params, 'centroid': np.array(ferro_centroid)}, '../models/xxzh_autoencoder_params.pkl')
-print('Saved AE params to ../models/xxzh_autoencoder_params.pkl')
+save_pickle({'params': params, 'centroid': np.array(ferro_centroid)}, f'../models/z2gauge_autoencoder_params_Lx{Lx}Ly{Ly}.pkl')
+print('Saved AE params to ../models/z2gauge_autoencoder_params_Lx{Lx}Ly{Ly}.pkl')
