@@ -3,7 +3,6 @@ import numpy as np  # Only for pickle serialization
 from functools import reduce
 import pickle
 import os
-from tqdm import tqdm
 
 
 def pauli_z():
@@ -333,7 +332,7 @@ if __name__ == "__main__":
     print("\n" + "=" * 50)
     print("CONFINED PHASE (h >> j_a)")
     print("=" * 50)
-    H_confined = hamiltonian(j_a=-0.1, h=-1.0, star_ops=star_ops, trans_ops=trans_ops)
+    H_confined = hamiltonian(j_a=-1.0, h=-1.2, star_ops=star_ops, trans_ops=trans_ops)
     
     # Get ground state
     eigenvalues, eigenvectors = jnp.linalg.eigh(H_confined)
@@ -346,7 +345,6 @@ if __name__ == "__main__":
     print(f"Wilson loops: {phase_info['wilson_loops']}")
     print(f"Entanglement entropy: {phase_info['entanglement_entropy']:.4f}")
 """
-
 
 if __name__ == "__main__":
     
@@ -365,7 +363,7 @@ if __name__ == "__main__":
     
     # Parameters for confined phase
     j_a_fixed = -1.0  # Star operator coupling (fixed)
-    h_min, h_max = 1.2, 2.0  # Transverse field range (h >> |j_a| for confined)
+    h_min, h_max = -2, -1.2  # Transverse field range (h >> |j_a| for confined)
     n_samples = 1000
     
     print(f"\nConfined phase parameters:")
@@ -390,7 +388,7 @@ if __name__ == "__main__":
     print("\n" + "-" * 70)
     print("Generating ground states...")
     
-    for i, h in enumerate(tqdm(h_values, desc="Progress")):
+    for i, h in enumerate(h_values):
         # Construct Hamiltonian: H = j_a * sum(A_s) + h * sum(sigma_x)
         H = hamiltonian(j_a=j_a_fixed, h=-h, star_ops=star_ops, trans_ops=trans_ops)
         
@@ -409,9 +407,14 @@ if __name__ == "__main__":
             'Ly': Ly,
             'phase': 'confined'
         })
+        
+        # Print progress every 10% or every 100 samples, whichever is more frequent
+        if (i + 1) % max(1, min(100, n_samples // 10)) == 0 or (i + 1) == n_samples:
+            progress_pct = 100.0 * (i + 1) / n_samples
+            print(f"  Progress: {i+1}/{n_samples} ({progress_pct:.1f}%) - h={float(h):.4f}, E={float(ground_energy):.6f}")
     
     # Save data
-    output_file = f'../../data/data_confined_{Lx}x{Ly}.pkl'
+    output_file = f'../../data/data_confined_{Lx}x{Ly}_n{n_samples}.pkl'
     
     print("\n" + "-" * 70)
     print(f"Saving data to {output_file}...")
@@ -453,8 +456,7 @@ if __name__ == "__main__":
         W = wilson_loop(Lx, Ly, 0, 0, Lx, Ly)  # Full system loop
         w_expect = float(expectation_value(W, state))
         
-        phase_type = "Confined" if abs(w_expect) < 0.1 else "Deconfined"
-        print(f"  Sample {i+1} (h={h_val:.2f}): Wilson loop = {w_expect:.4f} → {phase_type}")
+        print(f"  Sample {i+1} (h={h_val:.2f}): Wilson loop = {w_expect:.4f}")
     
     print("\n" + "=" * 70)
     print("DONE! Data ready for training.")

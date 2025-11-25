@@ -15,4 +15,4 @@ source ~/.bashrc
 conda activate test
 
 # Run the script
-python ~/diffphase/diff_phase/z2gauge/scripts/hamiltonian/z2ham.py
+python -u ~/diffphase/diff_phase/z2gauge/scripts/hamiltonian/z2ham.py
