@@ -13,7 +13,7 @@ timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # Optionally: load a pretrained AE and centroid
 Lx = 2
-Ly = 3
+Ly = 1
 N = 2 * Lx * Ly
 try:
     checkpoint = load_pickle(f'../models/z2gauge_autoencoder_params_Lx{Lx}Ly{Ly}.pkl')
