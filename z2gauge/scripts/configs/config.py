@@ -15,7 +15,7 @@ class AEConfig:
 
 @dataclass
 class HamConfig:
-    seed: int = 83948
+    seed: int = 8334948
     lr: float = 1e-4
     max_steps_block: int = 1000
     stall_window: int = 25
@@ -24,6 +24,7 @@ class HamConfig:
     param_tol_change: float = 1e-5
     nan_lr_mult: float = 1e2
     nan_lr_steps: int = 10       # how many steps to keep boosted LR
+    nan_boost_lr: bool = False   # whether to boost learning rate when NaN encountered
 
 @dataclass
 class ActiveConfig:
@@ -31,5 +32,5 @@ class ActiveConfig:
     sample_radius_h: float = 0.2
     num_samples_when_stalled: int = 1000
     center_coeff: float = 1e-3  # latent variance penalty in AE loss
-    nan_jump_scale: float = 2.0   # jump length multiplier along last_dir
-    nan_jump_noise: float = 0.05  # fallback random jump (if no last_dir yet)
+    nan_jump_scale: float = 0.1   # jump length multiplier along last_dir (reduced from 2.0)
+    nan_jump_noise: float = 0.01  # fallback random jump (if no last_dir yet, reduced from 0.05)

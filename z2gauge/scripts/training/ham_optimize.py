@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+import jax.tree_util
 import numpy as np
 import optax
 from jax import jit, value_and_grad
@@ -44,10 +45,10 @@ def make_ham_step(opt):
         
         # Clip gradients to prevent explosion (max gradient norm of 10.0)
         # If gradient is NaN/Inf, replace with zeros to skip update
-        grads_safe = jax.tree.map(lambda g: jnp.where(jnp.isfinite(g), g, 0.0), grads)
+        grads_safe = jax.tree_util.tree_map(lambda g: jnp.where(jnp.isfinite(g), g, 0.0), grads)
         grad_norm = jnp.linalg.norm(jnp.ravel(grads_safe))
         max_grad_norm = 10.0
-        grads_clipped = jax.tree.map(lambda g: g * jnp.minimum(1.0, max_grad_norm / (grad_norm + 1e-12)), grads_safe)
+        grads_clipped = jax.tree_util.tree_map(lambda g: g * jnp.minimum(1.0, max_grad_norm / (grad_norm + 1e-12)), grads_safe)
         updates, opt_state = opt.update(grads_clipped, opt_state, ham_param)
         ham_param = optax.apply_updates(ham_param, updates)
         # Clip parameter to reasonable range
