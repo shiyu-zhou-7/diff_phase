@@ -108,33 +108,37 @@ def active_phase_discovery(Lx, Ly, h_init,
             ).item()
 
             if not all_finite:
-                print("[WARNING] NaN/Inf in params/loss/grad. Reverting and jumping past the region.")
+                if act_cfg.enable_nan_revert_jump:
+                    print("[WARNING] NaN/Inf in params/loss/grad. Reverting and jumping past the region.")
 
-                # 1) revert
-                ham_param = ham_param_prev
+                    # 1) revert
+                    ham_param = ham_param_prev
 
-                # 2) compute jump
-                if jnp.all(last_dir == 0).item():
-                    # first step or no history: small random nudge
-                    key, sub = jax.random.split(key)
-                    jump = act_cfg.nan_jump_noise * jax.random.normal(sub, shape=ham_param.shape)
+                    # 2) compute jump
+                    if jnp.all(last_dir == 0).item():
+                        # first step or no history: small random nudge
+                        key, sub = jax.random.split(key)
+                        jump = act_cfg.nan_jump_noise * jax.random.normal(sub, shape=ham_param.shape)
+                    else:
+                        jump = act_cfg.nan_jump_scale * last_dir
+
+                    ham_param = ham_param + jump
+
+                    # 3) temporary LR boost (only if enabled)
+                    if ham_cfg.nan_boost_lr:
+                        nan_boost_steps_left = ham_cfg.nan_lr_steps
+                        ham_opt_boost = optax.adam(learning_rate=ham_cfg.lr * ham_cfg.nan_lr_mult)
+                        ham_state = ham_opt_boost.init(ham_param)
+                        ham_step  = make_ham_step(ham_opt_boost)
+                    else:
+                        # Keep normal optimizer, just reset state with new parameters
+                        ham_state = ham_opt.init(ham_param)
+
+                    # skip recording this failed step; continue to next iteration
+                    continue
                 else:
-                    jump = act_cfg.nan_jump_scale * last_dir
-
-                ham_param = ham_param + jump
-
-                # 3) temporary LR boost (only if enabled)
-                if ham_cfg.nan_boost_lr:
-                    nan_boost_steps_left = ham_cfg.nan_lr_steps
-                    ham_opt_boost = optax.adam(learning_rate=ham_cfg.lr * ham_cfg.nan_lr_mult)
-                    ham_state = ham_opt_boost.init(ham_param)
-                    ham_step  = make_ham_step(ham_opt_boost)
-                else:
-                    # Keep normal optimizer, just reset state with new parameters
-                    ham_state = ham_opt.init(ham_param)
-
-                # skip recording this failed step; continue to next iteration
-                continue
+                    # skip recording this failed step; continue to next iteration
+                    continue
 
                 
             # Stop condition if parameter changes are tiny
