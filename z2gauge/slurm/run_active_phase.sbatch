@@ -11,7 +11,8 @@
 export JAX_PLATFORMS=cpu
 
 # Load conda
-source ~/.bashrc
+module purge
+source /cm/shared/apps/anaconda3/2023.07-2/etc/profile.d/conda.sh
 conda activate test
 
 # === run ===
