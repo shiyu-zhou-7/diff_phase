@@ -34,3 +34,4 @@ class ActiveConfig:
     center_coeff: float = 1e-3  # latent variance penalty in AE loss
     nan_jump_scale: float = 0.1   # jump length multiplier along last_dir (reduced from 2.0)
     nan_jump_noise: float = 0.01  # fallback random jump (if no last_dir yet, reduced from 0.05)
+    enable_nan_revert_jump: bool = False  # whether to revert and jump when NaN/Inf is encountered
