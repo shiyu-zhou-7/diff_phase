@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=xxz_dmrg_active
+#SBATCH --job-name=xxz_dmrg_active_test
 #SBATCH --partition=longq
 #SBATCH --nodes=1
 #SBATCH --ntasks=1

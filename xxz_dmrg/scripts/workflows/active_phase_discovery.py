@@ -35,27 +35,28 @@ def generate_data_xxzh(L, deltas, hs, observables_list, dmrg_cfg):
     for delta, h in zip(np.array(deltas), np.array(hs)):
 
         # initialize random product state and Hamiltonian
-        # psi = get_random_MPS(L, d=2, bond_dim = 1)
-        # H = XXZhX(L, delta, h)
-        # dmrg = DMRG(psi, H, dmrg_cfg.max_bond, lanczos=dmrg_cfg.lanczos_bool)
+        psi = get_random_MPS(L, d=2, bond_dim = 1)
+        H = XXZhX(L, delta, h)
+        dmrg = DMRG(psi, H, dmrg_cfg.max_bond, lanczos=dmrg_cfg.lanczos_bool)
 
         # perform DMRG sweeps
-        # for _ in range(dmrg_cfg.sweeps):
-            # dmrg.sweep()
-            # psi = dmrg.psi
+        for _ in range(dmrg_cfg.sweeps):
+            dmrg.sweep()
+            psi = dmrg.psi
 
         # Compute observables
-        # obs_list = psi.get_site_exp_val(observables_list)
-        # obs_vec = jnp.stack(
-            # [jnp.real(jnp.asarray(x)).reshape(()) for x in obs_list],
-            # axis=0
-        # ) # shape (len(observables_list),)
+        obs_list = psi.get_site_exp_val(observables_list)
+        obs_vec = jnp.stack(
+            [jnp.real(jnp.asarray(x)).reshape(()) for x in obs_list],
+            axis=0
+        ) # shape (len(observables_list),)
 
 
         # use one-site update rule to compute observables
-        mps, _ = dmrg_E(L, delta, h, conf=1e-4, test=False, chi_max=dmrg_cfg.max_bond, max_sweep=dmrg_cfg.sweeps)
-        obs = jnp.asarray(cal_observables(mps, observables_list))
-        rows.append(obs)
+        # mps, _ = dmrg_E(L, delta, h, conf=1e-4, test=False, chi_max=dmrg_cfg.max_bond, max_sweep=dmrg_cfg.sweeps)
+        # obs = jnp.asarray(cal_observables(mps, observables_list))
+        
+        rows.append(obs_vec)
 
     data = jnp.stack(rows, axis=0)
     return data
@@ -76,20 +77,20 @@ def active_phase_discovery(L=20, init_delta=-1.5, init_h=0.3,
     sz = jnp.array([[1, 0], [0, -1]])
     sy = jnp.array([[0, -1j], [1j, 0]])
 
-    # observables_list = [(i, sz) for i in range(L)] + [(i, sx) for i in range(L)] + [(i, sy) for i in range(L)]
+    observables_list = [(i, sz) for i in range(L)] + [(i, sx) for i in range(L)] + [(i, sy) for i in range(L)]
 
     # pauli_string: 0,1,2,3 for I, X, Y, Z
     # for example: 3000.., means ZIII...
-    observables_list= []
-    for i in range (L):
-        mpo = Pauli_MPO(L=L, d=2,pauli_string = '0'*(i)+'3'+'0'*(L-i-1))
-        observables_list.append(mpo)
-    for i in range (L):
-        mpo = Pauli_MPO(L=L,d=2,pauli_string = '0'*(i)+'1'+'0'*(L-i-1))
-        observables_list.append(mpo)
-    for i in range (L):
-        mpo = Pauli_MPO(L=L,d=2,pauli_string = '0'*(i)+'2'+'0'*(L-i-1))
-        observables_list.append(mpo)
+    # observables_list= []
+    # for i in range (L):
+    #     mpo = Pauli_MPO(L=L, d=2,pauli_string = '0'*(i)+'3'+'0'*(L-i-1))
+    #     observables_list.append(mpo)
+    # for i in range (L):
+    #     mpo = Pauli_MPO(L=L,d=2,pauli_string = '0'*(i)+'1'+'0'*(L-i-1))
+    #     observables_list.append(mpo)
+    # for i in range (L):
+    #     mpo = Pauli_MPO(L=L,d=2,pauli_string = '0'*(i)+'2'+'0'*(L-i-1))
+    #     observables_list.append(mpo)
 
     D = len(observables_list)  # data dimension
     print(f'Observable vector dimension D = {D}')

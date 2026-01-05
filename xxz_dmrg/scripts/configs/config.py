@@ -7,7 +7,7 @@ from typing import Optional
 @dataclass
 class AEConfig:
     seed: int = 45283497
-    latent_dim: int = 5
+    latent_dim: int = 15
     dropout_p: float = 0.05
     lr: float = 1e-5
     weight_decay: float = 0 # AdamW style
@@ -19,12 +19,12 @@ class AEConfig:
 @dataclass
 class HamConfig:
     seed: int = 83948
-    lr: float = 1e-4
-    max_steps_block: int = 2000
+    lr: float = 1e-5
+    max_steps_block: int = 10
     stall_window: int = 25
-    stall_tol_loss: float = 1e-4
+    stall_tol_loss: float = 1e-6
     stall_tol_grad: float = 1e-6
-    param_tol_change: float = 1e-5
+    param_tol_change: float = 1e-6
     nan_lr_mult: float = 1e2
     nan_lr_steps: int = 10       # how many steps to keep boosted LR
 
@@ -39,8 +39,8 @@ class ActiveConfig:
 
 @dataclass
 class DMRGConfig:
-    max_bond: int = 10          # χ (bond dimension)
-    sweeps: int = 10            # number of finite sweeps
+    max_bond: int = 3           # χ (bond dimension)
+    sweeps: int = 3             # number of finite sweeps
     tol: float = 1e-8           # energy convergence tol
     normalize: bool = True
     warm_start: bool = True     # reuse MPS between nearby (Δ,h)
