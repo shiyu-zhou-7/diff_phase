@@ -28,7 +28,7 @@ def _latent_loss(delta_h: jnp.ndarray,            # shape (2,) = (Δ, h)
     # run_dmrg must be JAX-differentiable w.r.t. (delta, h)
     model = XXZhX(L, delta, h)
     psi = run_dmrg(L, model, dmrg_cfg)  # psi: (2**N,) real/complex
-    psi = jax.lax.stop_gradient(psi)  # stop gradient through DMRG
+    # psi = jax.lax.stop_gradient(psi)  # stop gradient through DMRG
 
     # Compute observables, force real
     obs_list = psi.get_site_exp_val(observables_list)
