@@ -26,21 +26,21 @@ def _latent_loss(delta_h: jnp.ndarray,            # shape (2,) = (Δ, h)
     delta, h = delta_h[0], delta_h[1]
 
     # run_dmrg must be JAX-differentiable w.r.t. (delta, h)
-    # model = XXZhX(L, delta, h)
-    # psi = run_dmrg(L, model, dmrg_cfg)  # psi: (2**N,) real/complex
-    # psi = jax.lax.stop_gradient(psi)  # stop gradient through DMRG
+    model = XXZhX(L, delta, h)
+    psi = run_dmrg(L, model, dmrg_cfg)  # psi: (2**N,) real/complex
+    psi = jax.lax.stop_gradient(psi)  # stop gradient through DMRG
 
     # Compute observables, force real
-    # obs_list = psi.get_site_exp_val(observables_list)
-    # obs = jnp.stack(
-    #         [jnp.real(jnp.asarray(x)).reshape(()) for x in obs_list],
-    #         axis=0
-    #         ) # shape (len(observables_list),)
+    obs_list = psi.get_site_exp_val(observables_list)
+    obs = jnp.stack(
+            [jnp.real(jnp.asarray(x)).reshape(()) for x in obs_list],
+            axis=0
+            ) # shape (len(observables_list),)
 
     # run dmrg_xxz with one-site update rule
     # print(f'using dmrg_xxz with one-site update rule')
-    mps, _ = dmrg_E(L, delta, h, conf=1e-4, test=False, chi_max=dmrg_cfg.max_bond, max_sweep=dmrg_cfg.sweeps)
-    obs = jnp.asarray(cal_observables(mps, observables_list))
+    # mps, _ = dmrg_E(L, delta, h, conf=1e-4, test=False, chi_max=dmrg_cfg.max_bond, max_sweep=dmrg_cfg.sweeps)
+    # obs = jnp.asarray(cal_observables(mps, observables_list))
 
     # default_device context will handle placement
 
