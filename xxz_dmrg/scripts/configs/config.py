@@ -20,7 +20,7 @@ class AEConfig:
 class HamConfig:
     seed: int = 83948
     lr: float = 1e-5
-    max_steps_block: int = 10
+    max_steps_block: int = 2000
     stall_window: int = 25
     stall_tol_loss: float = 1e-6
     stall_tol_grad: float = 1e-6
@@ -39,8 +39,8 @@ class ActiveConfig:
 
 @dataclass
 class DMRGConfig:
-    max_bond: int = 3           # χ (bond dimension)
-    sweeps: int = 3             # number of finite sweeps
+    max_bond: int = 10          # χ (bond dimension)
+    sweeps: int = 10            # number of finite sweeps
     tol: float = 1e-8           # energy convergence tol
     normalize: bool = True
     warm_start: bool = True     # reuse MPS between nearby (Δ,h)
