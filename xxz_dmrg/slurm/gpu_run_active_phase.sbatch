@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4                    # CPU cores for preprocessing / JAX threads
 #SBATCH --mem=64G                            # total system RAM
-#SBATCH --time=14-00:00:00                    # 14 day walltime
+#SBATCH --time=7-00:00:00                    # 7 day walltime
 #SBATCH --output=/home/szhou3/diffphase/logs/active_phase_gpu_%j.out
 #SBATCH --error=/home/szhou3/diffphase/logs/active_phase_gpu_%j.err
 
