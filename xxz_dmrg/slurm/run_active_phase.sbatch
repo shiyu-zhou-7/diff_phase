@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=xxz_dmrg_active_test
+#SBATCH --job-name=xxz_dmrg_active
 #SBATCH --partition=longq
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
-#SBATCH --time=1-00:00:00
+#SBATCH --time=14-00:00:00
 #SBATCH --output=/home/szhou3/diffphase/logs/xxz_dmrg_active_%j.out
 #SBATCH --error=/home/szhou3/diffphase/logs/xxz_dmrg_active_%j.err
 #SBATCH --signal=USR1@120
