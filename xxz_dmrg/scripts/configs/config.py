@@ -19,7 +19,7 @@ class AEConfig:
 @dataclass
 class HamConfig:
     seed: int = 83948
-    lr: float = 1e-4
+    lr: float = 1e-3
     max_steps_block: int = 2000
     stall_window: int = 25
     stall_tol_loss: float = 1e-6
