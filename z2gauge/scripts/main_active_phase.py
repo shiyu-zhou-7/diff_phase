@@ -16,9 +16,10 @@ timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 Lx = 2
 Ly = 3
 N = 2 * Lx * Ly
-checkpoint_path = f'../models/z2gauge_autoencoder_params_Lx{Lx}Ly{Ly}.pkl'
+checkpoint_path = f'../models/z2gauge_ite_autoencoder_params_Lx{Lx}Ly{Ly}.pkl'
 init_params = None
 ferro_centroid = None
+print(f'z2gauge ite active phase discovery with Lx={Lx} and Ly={Ly}')
 
 if os.path.exists(checkpoint_path):
     try:
@@ -38,13 +39,13 @@ else:
 params, centroid, hist = active_phase_discovery(
     Lx=Lx,
     Ly=Ly,
-    h_init=-1.5,
+    h_init=-1.0,
     ae_cfg=AEConfig(),
     ham_cfg=HamConfig(),
     act_cfg=ActiveConfig(),
     init_ae_params=init_params,
     ferro_centroid=ferro_centroid,
-    max_outer_iters=6,
+    max_outer_iters=10,
 )
 
 save_pickle({'params': params, 'centroid': np.array(centroid), 'hist': hist}, f'../models/active_phase_discovery_checkpoint_lr{HamConfig().lr}_{timestamp}.pkl')

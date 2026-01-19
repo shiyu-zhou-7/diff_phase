@@ -17,11 +17,11 @@ class AEConfig:
 class HamConfig:
     seed: int = 8334948
     lr: float = 1e-4
-    max_steps_block: int = 1000
+    max_steps_block: int = 2000
     stall_window: int = 25
     stall_tol_loss: float = 1e-4
     stall_tol_grad: float = 1e-6
-    param_tol_change: float = 1e-5
+    param_tol_change: float = 5e-5
     nan_lr_mult: float = 1e2
     nan_lr_steps: int = 10       # how many steps to keep boosted LR
     nan_boost_lr: bool = False   # whether to boost learning rate when NaN encountered
@@ -35,3 +35,16 @@ class ActiveConfig:
     nan_jump_scale: float = 0.1   # jump length multiplier along last_dir (reduced from 2.0)
     nan_jump_noise: float = 0.01  # fallback random jump (if no last_dir yet, reduced from 0.05)
     enable_nan_revert_jump: bool = False  # whether to revert and jump when NaN/Inf is encountered
+
+@dataclass
+class ITEConfig:
+    # imaginary-time parameters
+    dt: float = 1e-2           # SAFE for AD at Lx=2, Ly=3
+    n_steps: int = 150         # ~power-method depth
+
+    # numerical safety
+    eps: float = 1e-12
+    normalize_every_step: bool = True
+
+    # reproducibility
+    seed: int = 243982

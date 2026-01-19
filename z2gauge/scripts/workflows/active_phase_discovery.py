@@ -12,6 +12,7 @@ from models.autoencoder import init_params as init_ae, fetch_latent
 from training.ae_train import train_autoencoder
 from training.ham_optimize import ham_update, make_ham_step
 from utils.io import save_pickle
+from hamiltonian.ite import ite_ground_state_from_params
 
 
 def sample_params(h_init, n, rad_h, key):
@@ -20,24 +21,37 @@ def sample_params(h_init, n, rad_h, key):
     return hs
 
 
-def generate_states(hs, star_ops, trans_ops):
+# def generate_states(hs, star_ops, trans_ops):
+#     ## exact diagonalization version
+#     states = []
+#     for h in np.array(hs):
+#         H = hamiltonian(-1.0, h, star_ops, trans_ops)
+#         _, eigenvectors = jnp.linalg.eigh(H)
+#         ground_state = eigenvectors[:, 0]
+#         ground_state = jnp.real(ground_state)
+#         ground_state = ground_state / (jnp.linalg.norm(ground_state) + 1e-12)
+#         states.append(jnp.asarray(ground_state))
+#     X = jnp.stack(states, axis=0)
+#     return X
+
+
+def generate_states(hs, star_ops, trans_ops, ite_steps=300, ite_dt=1e-2, seed=0):
+    ## ite version
     states = []
-    for h in np.array(hs):
-        H = hamiltonian(-1.0, h, star_ops, trans_ops)
-        _, eigenvectors = jnp.linalg.eigh(H)
-        ground_state = eigenvectors[:, 0]
-        ground_state = jnp.real(ground_state)
-        ground_state = ground_state / (jnp.linalg.norm(ground_state) + 1e-12)
-        states.append(jnp.asarray(ground_state))
-    X = jnp.stack(states, axis=0)
-    return X
+    base_key = jax.random.PRNGKey(seed)
+    for i, h in enumerate(np.array(hs)):
+        key = jax.random.fold_in(base_key, i)
+        v, _ = ite_ground_state_from_params(-1.0, float(h), star_ops, trans_ops,
+                                            n_steps=ite_steps, dt=ite_dt, key=key)
+        states.append(v)
+    return jnp.stack(states, axis=0)
 
 
 def active_phase_discovery(Lx, Ly, h_init,
                            ae_cfg: AEConfig = AEConfig(),
                            ham_cfg: HamConfig = HamConfig(),
                            act_cfg: ActiveConfig = ActiveConfig(),
-                           init_ae_params=None, ferro_centroid=None, max_outer_iters=6):
+                           init_ae_params=None, ferro_centroid=None, max_outer_iters=10):
     key = jax.random.PRNGKey(ae_cfg.seed)
 
     N = 2 * Lx * Ly

@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4                    # CPU cores for preprocessing / JAX threads
-#SBATCH --mem=116G                            # total system RAM
+#SBATCH --mem=1G                            # total system RAM
 #SBATCH --time=1-00:00:00                    # 1 day walltime
 #SBATCH --output=/home/szhou3/diffphase/logs/z2gauge_ae_gpu_%j.out
 #SBATCH --error=/home/szhou3/diffphase/logs/z2gauge_ae_gpu_%j.err
