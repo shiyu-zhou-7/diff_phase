@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=xxz_dmrg_active
-#SBATCH --partition=reservedq
+#SBATCH --partition=amdreservedq
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
