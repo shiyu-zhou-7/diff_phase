@@ -11,9 +11,19 @@ config.update("jax_enable_x64", True)
 import sys
 sys.path.append('.')
 from hamiltonian.z2ham import sum_star_operators, transverse_field, hamiltonian
+from hamiltonian.ite import ite_ground_state_from_params
 
 
-def generate_confined_phase_data(Lx, Ly, j_a_fixed=-1.0, h_range=(0.5, 3.0), n_samples=100):
+def generate_confined_phase_data(
+    Lx,
+    Ly,
+    j_a_fixed=-1.0,
+    h_range=(0.5, 3.0),
+    n_samples=1000,
+    ite_steps=300,
+    ite_dt=1e-2,
+    seed=3458923,
+):
     """
     Generate ground state wavefunctions in the confined phase.
     
@@ -46,14 +56,18 @@ def generate_confined_phase_data(Lx, Ly, j_a_fixed=-1.0, h_range=(0.5, 3.0), n_s
     h_values = np.linspace(h_range[0], h_range[1], n_samples)
     
     print("\nGenerating ground states...")
+    base_key = jax.random.PRNGKey(seed)
     for i, h in enumerate(tqdm(h_values)):
-        # Construct Hamiltonian
-        H = hamiltonian(j_a=j_a_fixed, h=-h, star_ops=star_ops, trans_ops=trans_ops)
-        
-        # Get ground state (lowest eigenvalue and eigenvector)
-        eigenvalues, eigenvectors = jnp.linalg.eigh(H)
-        ground_state = eigenvectors[:, 0]
-        ground_energy = eigenvalues[0]
+        key = jax.random.fold_in(base_key, i)
+        ground_state, ground_energy = ite_ground_state_from_params(
+            j_a_fixed,
+            -float(h),
+            star_ops,
+            trans_ops,
+            n_steps=ite_steps,
+            dt=ite_dt,
+            key=key,
+        )
         
         # Store data
         data.append({
@@ -69,7 +83,7 @@ def generate_confined_phase_data(Lx, Ly, j_a_fixed=-1.0, h_range=(0.5, 3.0), n_s
     return data
 
 
-def generate_deconfined_phase_data(Lx, Ly, j_a_range=(-3.0, -0.5), h_fixed=0.1, n_samples=100):
+def generate_deconfined_phase_data(Lx, Ly, j_a_fixed=-1.0, h_range=(0.01, 0.3), n_samples=100):
     """
     Generate ground state wavefunctions in the deconfined phase.
     
@@ -77,9 +91,9 @@ def generate_deconfined_phase_data(Lx, Ly, j_a_range=(-3.0, -0.5), h_fixed=0.1, 
     
     Args:
         Lx, Ly: Lattice dimensions
-        j_a_range: Range of star operator couplings (j_a_min, j_a_max)
-        h_fixed: Fixed transverse field strength (small)
-        n_samples: Number of different j_a values to sample
+        j_a_fixed: Fixed star operator coupling (negative for attractive)
+        h_range: Range of transverse field strengths (small)
+        n_samples: Number of different h values to sample
     
     Returns:
         List of dictionaries containing ground states and parameters
@@ -89,7 +103,7 @@ def generate_deconfined_phase_data(Lx, Ly, j_a_range=(-3.0, -0.5), h_fixed=0.1, 
     
     print(f"Generating deconfined phase data for {Lx}×{Ly} lattice")
     print(f"Number of qubits: {n_qubits}, Hilbert space dim: {dim}")
-    print(f"j_a ∈ [{j_a_range[0]}, {j_a_range[1]}], h = {h_fixed}")
+    print(f"j_a = {j_a_fixed}, h ∈ [{h_range[0]}, {h_range[1]}]")
     print(f"Samples: {n_samples}\n")
     
     # Pre-compute operators
@@ -99,12 +113,12 @@ def generate_deconfined_phase_data(Lx, Ly, j_a_range=(-3.0, -0.5), h_fixed=0.1, 
     trans_ops = transverse_field(Lx, Ly)
     
     data = []
-    j_a_values = np.linspace(j_a_range[0], j_a_range[1], n_samples)
+    h_values = np.linspace(h_range[0], h_range[1], n_samples)
     
     print("\nGenerating ground states...")
-    for i, j_a in enumerate(tqdm(j_a_values)):
+    for i, h in enumerate(tqdm(h_values)):
         # Construct Hamiltonian
-        H = hamiltonian(j_a=j_a, h=-h_fixed, star_ops=star_ops, trans_ops=trans_ops)
+        H = hamiltonian(j_a=j_a_fixed, h=-h, star_ops=star_ops, trans_ops=trans_ops)
         
         # Get ground state
         eigenvalues, eigenvectors = jnp.linalg.eigh(H)
@@ -115,8 +129,8 @@ def generate_deconfined_phase_data(Lx, Ly, j_a_range=(-3.0, -0.5), h_fixed=0.1, 
         data.append({
             'v': ground_state,
             'E': ground_energy,
-            'j_a': j_a,
-            'h': h_fixed,
+            'j_a': j_a_fixed,
+            'h': h,
             'Lx': Lx,
             'Ly': Ly,
             'phase': 'deconfined'
@@ -188,7 +202,7 @@ def generate_phase_transition_data(Lx, Ly, n_samples=200):
 
 if __name__ == "__main__":
     # Configuration
-    Lx, Ly = 3, 3  # Lattice size
+    Lx, Ly = 2, 3  # Lattice size
     
     # Choose which dataset to generate
     print("=" * 60)
@@ -204,18 +218,18 @@ if __name__ == "__main__":
     
     if choice == "1":
         # Generate confined phase data
-        data = generate_confined_phase_data(Lx, Ly, j_a_fixed=-1.0, h_range=(0.5, 3.0), n_samples=100)
-        filename = '../data/data_confined.pkl'
+        data = generate_confined_phase_data(Lx, Ly, j_a_fixed=-1.0, h_range=(-1.5, -0.7), n_samples=1000)
+        filename = f'../data/data_ite_confined_{Lx}x{Ly}_n1000.pkl'
         
     elif choice == "2":
         # Generate deconfined phase data
-        data = generate_deconfined_phase_data(Lx, Ly, j_a_range=(-3.0, -0.5), h_fixed=0.1, n_samples=100)
-        filename = '../data/data_deconfined.pkl'
+        data = generate_deconfined_phase_data(Lx, Ly, j_a_fixed=-1.0, h_range=(0.0001, 0.1), n_samples=1000)
+        filename = f'../data/data_ite_deconfined_{Lx}x{Ly}_n1000.pkl'
         
     else:  # choice == "3"
         # Generate phase transition data
         data = generate_phase_transition_data(Lx, Ly, n_samples=200)
-        filename = '../data/data_para.pkl'
+        filename = '../data/data_ite_phase_transition_{Lx}x{Ly}_n200.pkl'
     
     # Save data
     print(f"\nSaving data to {filename}...")
@@ -232,12 +246,12 @@ if __name__ == "__main__":
     energies = [d['E'] for d in data]
     print(f"Energy range: [{min(energies):.4f}, {max(energies):.4f}]")
     
-    if 'phase' in data[0]:
-        phases = [d['phase'] for d in data]
-        n_confined = phases.count('confined')
-        n_deconfined = phases.count('deconfined')
-        print(f"Confined samples: {n_confined}")
-        print(f"Deconfined samples: {n_deconfined}")
+    # if 'phase' in data[0]:
+    #     phases = [d['phase'] for d in data]
+    #     n_confined = phases.count('confined')
+    #     n_deconfined = phases.count('deconfined')
+    #     print(f"Confined samples: {n_confined}")
+    #     print(f"Deconfined samples: {n_deconfined}")
     
     print("\nDone!")
 
