@@ -19,12 +19,12 @@ class AEConfig:
 @dataclass
 class HamConfig:
     seed: int = 83948
-    lr: float = 1e-3
+    lr: float = 1e-2
     max_steps_block: int = 2000
     stall_window: int = 25
-    stall_tol_loss: float = 1e-6
-    stall_tol_grad: float = 1e-6
-    param_tol_change: float = 1e-6
+    stall_tol_loss: float = 1e-4
+    stall_tol_grad: float = 1e-4
+    param_tol_change: float = 5e-4
     nan_lr_mult: float = 1e2
     nan_lr_steps: int = 10       # how many steps to keep boosted LR
 

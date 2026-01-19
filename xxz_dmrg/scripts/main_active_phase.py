@@ -11,7 +11,8 @@ print(f'Timestamp: {timestamp}')
 # GPU configuration via a single default_device context
 import jax
 from contextlib import nullcontext
-_gpu = next((d for d in jax.devices() if d.platform == 'gpu'), None)
+from utils.gpu_utils import get_gpu_device
+_gpu = get_gpu_device()
 _devctx = jax.default_device(_gpu) if _gpu is not None else nullcontext()
 if _gpu is not None:
     print(f"Using GPU: {_gpu}")

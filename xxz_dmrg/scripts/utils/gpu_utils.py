@@ -7,10 +7,16 @@ from jax import device_put, devices
 from typing import Optional, Union, List, Any
 
 
+def _is_gpu_device(device: jax.Device) -> bool:
+    kind = str(getattr(device, "device_kind", "")).lower()
+    platform = str(getattr(device, "platform", "")).lower()
+    return kind in ("gpu", "metal") or platform in ("gpu", "metal")
+
+
 def get_gpu_device() -> Optional[jax.Device]:
-    """Get the first available GPU device, or None if no GPU is available."""
+    """Get the first available GPU/Metal device, or None if no GPU is available."""
     try:
-        gpu_devices = [d for d in devices() if d.device_kind == 'gpu']
+        gpu_devices = [d for d in devices() if _is_gpu_device(d)]
         return gpu_devices[0] if gpu_devices else None
     except Exception:
         return None
@@ -65,10 +71,11 @@ def configure_jax_for_gpu():
         gpu_device = get_gpu_device()
         if gpu_device is not None:
             print(f"Using GPU: {gpu_device}")
-            jax.config.update('jax_default_device', gpu_device)
-            
-            # Enable memory preallocation for better performance
-            jax.config.update('jax_platforms', 'gpu')
+            platform = str(getattr(gpu_device, "platform", "")).lower() or "gpu"
+            try:
+                jax.config.update('jax_platforms', platform)
+            except Exception:
+                pass
             
             return True
         else:
