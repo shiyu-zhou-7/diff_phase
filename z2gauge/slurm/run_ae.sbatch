@@ -3,7 +3,7 @@
 #SBATCH --output=/home/szhou3/diffphase/logs/z2gauge_ae_%j.out
 #SBATCH --error=/home/szhou3/diffphase/logs/z2gauge_ae_%j.err
 #SBATCH --time=12:00:00
-#SBATCH --partition=defq
+#SBATCH --partition=longq
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 
