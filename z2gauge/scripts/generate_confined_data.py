@@ -199,7 +199,7 @@ def generate_phase_transition_data(Lx, Ly, n_samples=200):
     
     return data
 
-
+"""
 if __name__ == "__main__":
     # Configuration
     Lx, Ly = 2, 3  # Lattice size
@@ -214,7 +214,8 @@ if __name__ == "__main__":
     print("3. Phase transition (both phases)")
     print()
     
-    choice = input("Select option (1/2/3) [default: 3]: ").strip() or "3"
+    # choice = input("Select option (1/2/3) [default: 3]: ").strip() or "3"
+    choice = None
     
     if choice == "1":
         # Generate confined phase data
@@ -230,6 +231,65 @@ if __name__ == "__main__":
         # Generate phase transition data
         data = generate_phase_transition_data(Lx, Ly, n_samples=200)
         filename = '../data/data_ite_phase_transition_{Lx}x{Ly}_n200.pkl'
+    
+    # Save data
+    print(f"\nSaving data to {filename}...")
+    with open(filename, 'wb') as f:
+        pickle.dump(data, f)
+    
+    print(f"✓ Saved {len(data)} ground states")
+    print(f"✓ File size: {len(pickle.dumps(data)) / 1e6:.2f} MB")
+    
+    # Print summary statistics
+    print("\n" + "=" * 60)
+    print("DATA SUMMARY")
+    print("=" * 60)
+    energies = [d['E'] for d in data]
+    print(f"Energy range: [{min(energies):.4f}, {max(energies):.4f}]")
+    
+    # if 'phase' in data[0]:
+    #     phases = [d['phase'] for d in data]
+    #     n_confined = phases.count('confined')
+    #     n_deconfined = phases.count('deconfined')
+    #     print(f"Confined samples: {n_confined}")
+    #     print(f"Deconfined samples: {n_deconfined}")
+    
+    print("\nDone!")
+
+"""
+
+
+if __name__ == "__main__":
+    # Configuration
+    Lx, Ly = 2, 3  # Lattice size
+    
+    # Choose which dataset to generate
+    print("=" * 60)
+    print("Z2 GAUGE THEORY GROUND STATE GENERATION")
+    print("=" * 60)
+
+    # Generate confined phase data
+    data = generate_confined_phase_data(Lx, Ly, j_a_fixed=-1.0, h_range=(-1.5, -0.7), n_samples=1000)
+    filename = f'../data/data_ite_confined_{Lx}x{Ly}_n1000.pkl'
+    # Save data
+    print(f"\nSaving data to {filename}...")
+    with open(filename, 'wb') as f:
+        pickle.dump(data, f)
+    
+    print(f"✓ Saved {len(data)} ground states")
+    print(f"✓ File size: {len(pickle.dumps(data)) / 1e6:.2f} MB")
+
+    # Print summary statistics
+    print("\n" + "=" * 60)
+    print("DATA SUMMARY")
+    print("=" * 60)
+    energies = [d['E'] for d in data]
+    print(f"Energy range: [{min(energies):.4f}, {max(energies):.4f}]")
+    
+    
+    # Generate deconfined phase data
+    data = generate_deconfined_phase_data(Lx, Ly, j_a_fixed=-1.0, h_range=(0.0001, 0.1), n_samples=1000)
+    filename = f'../data/data_ite_deconfined_{Lx}x{Ly}_n1000.pkl'
     
     # Save data
     print(f"\nSaving data to {filename}...")
