@@ -1,14 +1,14 @@
 #!/bin/bash
 #SBATCH --job-name=z2gauge_ap
 #SBATCH --output=/home/szhou3/diffphase/logs/z2gauge_ap_%j.out
-#SBATCH --error=/home/szhou3/diffphase/logs/z2gauge_ap%j.err
+#SBATCH --error=/home/szhou3/diffphase/logs/z2gauge_ap_%j.err
 #SBATCH --time=7-00:00:00
 #SBATCH --partition=longq
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 
 # Always force JAX to use CPU
-export JAX_PLATFORMS=cpu
+export JAX_PLATFORM_NAME=cpu
 
 # Load conda
 module purge
