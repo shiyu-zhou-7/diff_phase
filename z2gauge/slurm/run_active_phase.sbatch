@@ -5,7 +5,7 @@
 #SBATCH --time=7-00:00:00
 #SBATCH --partition=longq
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=64G
+#SBATCH --mem=128G
 
 # Always force JAX to use CPU
 export JAX_PLATFORM_NAME=cpu
