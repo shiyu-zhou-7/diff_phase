@@ -70,7 +70,7 @@ def ite_ground_state_from_params(
     star_ops: jnp.ndarray,
     trans_ops: jnp.ndarray,
     *,
-    n_steps: int = 300,
+    n_steps: int = 150,
     dt: float = 1e-2,
     key: jax.random.PRNGKey = None,
 ):
