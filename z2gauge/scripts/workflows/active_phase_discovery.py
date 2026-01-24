@@ -16,6 +16,9 @@ from hamiltonian.ite import ite_ground_state_from_params
 
 
 def sample_params(h_init, n, rad_h, key):
+    print(f"==== sample_params ====")
+    print(f"h_init: {h_init}, n: {n}, rad_h: {rad_h}")
+    print(f"key: {key}")
     _, kh = jax.random.split(key)
     hs     = h_init + rad_h * jax.random.normal(kh, (n,))
     return hs
@@ -35,7 +38,9 @@ def sample_params(h_init, n, rad_h, key):
 #     return X
 
 
-def generate_states(hs, star_ops, trans_ops, ite_steps=300, ite_dt=1e-2, seed=0):
+def generate_states(hs, star_ops, trans_ops, ite_steps=150, ite_dt=1e-2, seed=0):
+    print(f"==== generate_states ====")
+    print(f"hs: {hs}, ite_steps: {ite_steps}, ite_dt: {ite_dt}")
     ## ite version
     states = []
     base_key = jax.random.PRNGKey(seed)
