@@ -29,7 +29,7 @@ from hamiltonian.ite import ite_ground_state_from_params, ite_ground_state
 #     loss = -jnp.sqrt(jnp.sum(diff**2) + 1e-12) / z.shape[-1]  # Add small epsilon for numerical stability
 #     return loss
 
-@jit
+# @jit
 def ham_loss(ham_param, star_ops, trans_ops, ae_params, latent_target):
     ## ite version
     h = ham_param[0]
@@ -44,7 +44,7 @@ def ham_loss(ham_param, star_ops, trans_ops, ae_params, latent_target):
     loss = -jnp.sqrt(jnp.sum(diff**2) + 1e-12) / z.shape[-1]
     return loss
 
-@jit
+# @jit
 def ham_update(ham_param, star_ops, trans_ops, ae_params, latent_target, opt_state, opt):
     val, grads = value_and_grad(ham_loss)(ham_param, star_ops, trans_ops, ae_params, latent_target)
     updates, opt_state = opt.update(grads, opt_state, ham_param)
@@ -54,7 +54,7 @@ def ham_update(ham_param, star_ops, trans_ops, ae_params, latent_target, opt_sta
 
 
 def make_ham_step(opt):
-    @jit
+    # @jit
     def step(ham_param, star_ops, trans_ops, ae_params, latent_target, opt_state):
         val, grads = value_and_grad(ham_loss)(ham_param, star_ops, trans_ops, ae_params, latent_target)
         grad_is_finite = jnp.all(jnp.isfinite(grads))
