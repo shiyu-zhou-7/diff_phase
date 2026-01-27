@@ -11,6 +11,11 @@ module purge
 source /cm/shared/apps/anaconda3/2023.07-2/etc/profile.d/conda.sh
 conda activate test
 
+echo "==== ulimit ===="
+ulimit -a
+echo "==== meminfo ===="
+grep -E "MemTotal|MemFree|MemAvailable" /proc/meminfo
+
 # Force CPU and hide GPUs AFTER activation
 export CUDA_VISIBLE_DEVICES=""
 export JAX_PLATFORM_NAME=cpu
