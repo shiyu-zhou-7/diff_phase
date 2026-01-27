@@ -40,7 +40,7 @@ def sample_params(h_init, n, rad_h, key):
 
 def generate_states(hs, star_ops, trans_ops, ite_steps=150, ite_dt=1e-2, seed=0):
     print(f"==== generate_states ====")
-    print(f"hs: {hs}, ite_steps: {ite_steps}, ite_dt: {ite_dt}")
+    print(f"hs: {len(hs)}, ite_steps: {ite_steps}, ite_dt: {ite_dt}")
     ## ite version
     states = []
     base_key = jax.random.PRNGKey(seed)

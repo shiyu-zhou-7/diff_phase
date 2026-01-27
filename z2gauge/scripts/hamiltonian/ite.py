@@ -6,7 +6,7 @@ from .z2ham import hamiltonian
 def ite_ground_state(
     H: jnp.ndarray,
     *,
-    n_steps: int = 300,
+    n_steps: int = 150,
     dt: float = 1e-2,
     key: jax.random.PRNGKey = None,
     v0: jnp.ndarray = None,
