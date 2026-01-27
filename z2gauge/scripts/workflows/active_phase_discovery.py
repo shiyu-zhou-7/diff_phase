@@ -18,7 +18,6 @@ from hamiltonian.ite import ite_ground_state_from_params
 def sample_params(h_init, n, rad_h, key):
     print(f"==== sample_params ====")
     print(f"h_init: {h_init}, n: {n}, rad_h: {rad_h}")
-    print(f"key: {key}")
     _, kh = jax.random.split(key)
     hs     = h_init + rad_h * jax.random.normal(kh, (n,))
     return hs
@@ -40,7 +39,7 @@ def sample_params(h_init, n, rad_h, key):
 
 def generate_states(hs, star_ops, trans_ops, ite_steps=150, ite_dt=1e-2, seed=0):
     print(f"==== generate_states ====")
-    print(f"hs: {hs}, ite_steps: {ite_steps}, ite_dt: {ite_dt}")
+    print(f"number of samples: {len(hs)}, ite_steps: {ite_steps}, ite_dt: {ite_dt}")
     ## ite version
     states = []
     base_key = jax.random.PRNGKey(seed)
@@ -84,7 +83,7 @@ def active_phase_discovery(Lx, Ly, h_init,
         ferro_centroid = jnp.mean(Z, axis=0)
 
     # ham optimizer
-    ham_param = jnp.array([h_init], dtype=jnp.float64)
+    ham_param = jnp.array([h_init], dtype=jnp.float32)
     ham_opt = optax.adam(learning_rate=ham_cfg.lr)
     ham_state = ham_opt.init(ham_param)
     ham_step = make_ham_step(ham_opt)

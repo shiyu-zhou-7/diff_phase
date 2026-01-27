@@ -32,8 +32,8 @@ from hamiltonian.ite import ite_ground_state_from_params, ite_ground_state
 # @jit
 def ham_loss(ham_param, star_ops, trans_ops, ae_params, latent_target):
     ## ite version
-    h = ham_param[0]
-    H = hamiltonian(-1.0, h, star_ops, trans_ops)
+    h = ham_param[0].astype(jnp.float32)    
+    H = hamiltonian(jnp.float32(-1.0), h, star_ops, trans_ops).astype(jnp.float32)
 
     # ITE instead of eigh
     v, _ = ite_ground_state(H, n_steps=150, dt=1e-2, key=jax.random.PRNGKey(0))

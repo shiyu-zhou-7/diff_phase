@@ -75,6 +75,7 @@ def ite_ground_state_from_params(
     key: jax.random.PRNGKey = None,
 ):
     """Convenience wrapper matching your current Z2 Hamiltonian construction."""
-    H = hamiltonian(j_a, h, star_ops, trans_ops)
+    H = hamiltonian(jnp.float32(j_a), jnp.float32(h), star_ops, trans_ops)
+    H = H.astype(jnp.float32)
     return ite_ground_state(H, n_steps=n_steps, dt=dt, key=key)
 
