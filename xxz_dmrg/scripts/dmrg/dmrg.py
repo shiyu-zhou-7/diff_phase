@@ -45,7 +45,7 @@ class H_eff:
 
 class DMRG:
     """ DMRG toycode class implemented in JAX. """
-    def __init__(self, psi, MPO, chi_max, eps=1e-14, lanczos = True):
+    def __init__(self, psi, MPO, chi_max, eps=1e-14, lanczos = False):
         self.L = psi.L
         self.psi = psi
         self.MPO = MPO

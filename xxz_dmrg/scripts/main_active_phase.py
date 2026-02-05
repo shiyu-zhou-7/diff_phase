@@ -26,7 +26,7 @@ from configs.config import AEConfig, HamConfig, ActiveConfig, DMRGConfig
 with _devctx:
     # Optionally: load a pretrained AE and centroid
     try:
-        file = '../models/xxzhdmrg_autoencoder_params.pkl'
+        file = '../models/xxzhdmrg_autoencoder_params___.pkl'
         # file = '../models/xxzhdmrg1site_autoencoder_params_latent5_delta-2.5TO-1.5_h0.0TO0.5_L20.pkl'
         checkpoint = load_pickle(file)
         # checkpoint = load_pickle('../models/xxzhdmrg1site_autoencoder_params_latent5_delta-2.5TO-1.5_h0.0TO0.5_L20.pkl')
@@ -50,6 +50,9 @@ with _devctx:
         init_ae_params=init_params,
         ferro_centroid=ferro_centroid,
         max_outer_iters=6,
+        checkpoint_path='../models/active_phase_discovery_checkpoint_latest.pkl',
+        checkpoint_every_steps=50,
+        checkpoint_every_outer=1,
     )
 
     save_pickle({'params': params, 'centroid': np.array(centroid), 'hist': hist}, f'../models/active_phase_discovery_checkpoint_lr{HamConfig().lr}_{timestamp}.pkl')
