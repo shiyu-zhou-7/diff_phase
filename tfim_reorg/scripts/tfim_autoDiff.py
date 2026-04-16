@@ -128,7 +128,7 @@ def loss(h, ham_X, ham_ZZ):
 ## size of the ising chain
 N = 10
 J = jnp.asarray(-1.)
-h = jnp.asarray(-1.5)   ## initial strenght of the transverse field
+h = jnp.asarray(-0.3)   ## initial strenght of the transverse field
 
 ham_ZZ = prod(N,[0,1],[Sz,Sz])
 ham_X = prod(N,[0],[Sx])
@@ -141,7 +141,7 @@ ham_ZZ *= J
 ########################################################################################
 
 learning_rate = 0.3
-epochs = 200
+epochs = 500
 
 loss_list = []
 h_list = []
@@ -156,10 +156,29 @@ for i in range(epochs):
 
 ########################################################################################
 
-# plt.plot(range(epochs), h_list, 'o-')
-# # plt.axhline(y = 0, color = 'grey', linestyle = '--')
-# plt.ylabel('h',fontsize=14)
-# plt.xlabel('epoch',fontsize=14)
+# save the data
+data = {
+    'h_list': h_list,
+    'loss_list': loss_list,
+}
+with open('tfim_autoDiff_trajectory.pkl', 'wb') as f:
+    pickle.dump(data, f)
 
-# plt.savefig('audiff_tfimH_hSSB.pdf', bbox_inches='tight')
+########################################################################################
 
+hs = h_list
+
+fig, ax = plt.subplots()
+ax.plot(range(epochs), hs, 'o-', color='blue', markersize=2, lw=1)
+
+ax.set_xlabel("Epoch step", fontsize=14)
+ax.set_ylabel(r"$g$", fontsize=14)
+if len(hs) > 0:
+    h_min, h_max = min(hs), max(hs)
+    h_range = h_max - h_min
+    padding = 0.1 * h_range if h_range > 0 else 0.1
+    ax.set_ylim(h_min - padding, h_max + padding)
+ax.set_title("Hamiltonian Parameter Trajectory", fontsize=15)
+ax.grid(True)
+plt.tight_layout()
+plt.savefig(f'../figures/audiff_tfimH_h0.3.pdf', bbox_inches='tight')

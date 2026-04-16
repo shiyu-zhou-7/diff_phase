@@ -168,8 +168,8 @@ with open(file_path, 'rb') as file:
 
 ########################################################################################
 
-epochs = 1000
-lr = 0.1
+epochs = 100
+lr = 0.05
 drop_p = 0.
 
 g = np.asarray(0.2)
@@ -195,17 +195,44 @@ for i in range(epochs):
 
 ########################################################################################
 
-plt.figure()
-plt.plot(loss_list, 'o', color='blue')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.savefig(f'../figures/tfimdmrg_autoDoff_autoEncoder_latentnorm_ssb2para_loss_epoch{num_epochs}_layersP{hyper_param}.pdf', bbox_inches='tight')
-
-plt.figure()
-plt.plot(g_list, 'o', color='blue')
-plt.xlabel('Epochs')
-plt.ylabel('h')
-plt.savefig(f'../figures/tfimdmrg_autoDoff_autoEncoder_latentnorm_ssb2para_h_epoch{num_epochs}_layersP{hyper_param}.pdf', bbox_inches='tight')
+# save the data
+data = {
+    'g_list': g_list,
+    'loss_list': loss_list,
+}
+with open(f'tfimdmrg_autoDoff_autoEncoder_latentnorm_ssb2para   trajectory_epoch{epochs}_layersP{hyper_param}.pickle', 'wb') as f:
+    pickle.dump(data, f)
 
 ########################################################################################
+
+# plt.figure()
+# plt.plot(loss_list, 'o', color='blue')
+# plt.xlabel('Epochs')
+# plt.ylabel('Loss')
+# plt.savefig(f'../figures/tfimdmrg_autoDoff_autoEncoder_latentnorm_ssb2para_loss_epoch{num_epochs}_layersP{hyper_param}.pdf', bbox_inches='tight')
+
+# plt.figure()
+# plt.plot(g_list, 'o', color='blue')
+# plt.xlabel('Epochs')
+# plt.ylabel('h')
+# plt.savefig(f'../figures/tfimdmrg_autoDoff_autoEncoder_latentnorm_ssb2para_h_epoch{num_epochs}_layersP{hyper_param}.pdf', bbox_inches='tight')
+
+########################################################################################
+
+gs = g_list
+
+fig, ax = plt.subplots()
+ax.plot(range(epochs), gs, 'o-', color='blue', markersize=2, lw=1)
+
+ax.set_xlabel("Epoch step", fontsize=14)
+ax.set_ylabel(r"$g$", fontsize=14)
+if len(gs) > 0:
+    g_min, g_max = min(gs), max(gs)
+    g_range = g_max - g_min
+    padding = 0.1 * g_range if g_range > 0 else 0.1
+    ax.set_ylim(g_min - padding, g_max + padding)
+ax.set_title("Hamiltonian Parameter Trajectory", fontsize=15)
+ax.grid(True)
+plt.tight_layout()
+plt.savefig(f'../figures/dmrg_tfim_L50_trajectory_g.3.pdf', bbox_inches='tight')
 

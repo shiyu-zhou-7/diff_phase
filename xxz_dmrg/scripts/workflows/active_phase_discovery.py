@@ -33,7 +33,7 @@ def sample_params(center_delta, center_h, n, rad_d, rad_h, key):
 
 def generate_data_xxzh(L, deltas, hs, observables_list, dmrg_cfg):
     """ observables_list: [(site, op), ...] """
-    print(f'Generating new data {len(deltas)} for AE learning around delta={deltas} and h= {hs}...')
+    print(f'Generating new data {len(deltas)} for AE learning ...')
     rows = []
     for delta, h in zip(np.array(deltas), np.array(hs)):
 
@@ -221,7 +221,8 @@ def active_phase_discovery(L=20, init_delta=-1.5, init_h=0.3,
             X_local = generate_data_xxzh(L, deltas, hs, observables_list, dmrg_cfg)
             init_ae_params = train_autoencoder(init_ae_params, X_local, epochs=ae_cfg.mini_epochs, lr=ae_cfg.lr, weight_decay=ae_cfg.weight_decay, drop_p=ae_cfg.dropout_p, center_coeff=act_cfg.center_coeff, seed=ae_cfg.seed)
             Z_local = fetch_latent(init_ae_params, X_local, jax.random.PRNGKey(0))
-            ferro_centroid = jnp.mean(Z_local, axis=0)
+            new_centroid = jnp.mean(Z_local, axis=0)
+            ferro_centroid = (ferro_centroid + new_centroid) / 2  # average over history: retains memory of previously explored phases
 
         if (outer + 1) % checkpoint_every_outer == 0:
             save_checkpoint('outer_iter', outer + 1, step + 1)

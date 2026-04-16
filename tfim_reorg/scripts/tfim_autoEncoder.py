@@ -61,6 +61,19 @@ print(f'training size is {len(data_train)} and testing size is {len(data_test)}'
 
 ########################################################################################
 
+## evaluation data
+
+with open('../data/data_para.pkl', 'rb') as f:
+    data_para = np.array(pickle.load(f))
+
+eval_size = int(len(data_para)*0.3)
+eval_indices = np.random.choice(len(data_para), eval_size, replace=False)
+
+para_eval = data_para[eval_indices]
+x_para_eval = np.array([d['v'] for d in para_eval])
+
+########################################################################################
+
 # initialize the auto-encoder
 # define the auto-encoder network depths and width and initialize a network
 
@@ -183,6 +196,21 @@ def cal_m_reconstructed(x):
 
 ########################################################################################
 
+# evaluation of the auto-encoder
+def evaluate(params, x_ssb, x_para, drop_p=0, rng_key=None):
+    mid_index = len(params) // 2
+
+    if rng_key is None:
+        rng_key = jax.random.PRNGKey(0)
+
+    latent_ssb = encoder(params[0:mid_index], x_ssb, drop_p, rng_key)
+    latent_para = encoder(params[0:mid_index], x_para, drop_p, rng_key)
+
+    return latent_ssb, latent_para
+
+
+########################################################################################
+
 seed = 83948
 key = jax.random.PRNGKey(seed)
 key, subkey = jax.random.split(key)
@@ -194,7 +222,7 @@ initial_MLP_params = init_params(layer_widths, subkey)
 ########################################################################################
 
 lr = 0.1
-num_epochs = 2000
+num_epochs = 1000
 
 drop_p = 0.1
 
@@ -209,17 +237,28 @@ opt_state = opt.init(params)  # always the same pattern - handling state externa
 loss_list = []
 m_list = []
 
-# for i in range(num_epochs):
-#   params, loss_new = update(params, x_train, opt_state, opt, drop_p, key)
-#   loss_list.append(loss_new)
-#   if i % 100 == 0:
-#     m_list = cal_m_reconstructed(autoencoder(params, x_test, 0, key))
-#     print('epoch=',i, 'loss=',loss_new,
-#           'val_loss=', loss(params, x_test, 0, key), 
-#           'magnetization=', sum(m_list) / len(m_list)
-#             )
+## record the evaluation of latent space during training
+latent_ssb_list = []
+latent_para_list = []
+
+for i in range(num_epochs):
+  params, loss_new = update(params, x_train, opt_state, opt, drop_p, key)
+  loss_list.append(loss_new)
+  if i % 100 == 0:
+    m_list = cal_m_reconstructed(autoencoder(params, x_test, 0, key))
+    print('epoch=',i, 'loss=',loss_new,
+          'val_loss=', loss(params, x_test, 0, key), 
+          'magnetization=', sum(m_list) / len(m_list)
+            )
+  if i % 20 == 0:
+    latent_ssb, latent_para = evaluate(params, x_test, x_para_eval)
+    latent_ssb_list.append([latent_ssb, i])
+    latent_para_list.append([latent_para, i])
 
 ########################################################################################
+
+with open(f'../data/latent_eval.pkl', 'wb') as f:
+    pickle.dump({'latent_ssb_list': latent_ssb_list, 'latent_para_list': latent_para_list}, f)
 
 # hyper_param = '_'.join(str(e) for e in layer_widths)
 # with open(f'../models/tfimAutoEncoder_latentnorm_ssb_nnParams_adam_epoch{num_epochs}_layersP{hyper_param}.pickle','wb') as f:
@@ -237,24 +276,24 @@ m_list = []
 
 ########################################################################################
 
-hyper_param = '_'.join(str(e) for e in layer_widths)
-params = pickle.load(open(f'../models/tfimAutoEncoder_latentnorm_ssb_nnParams_adam_epoch{num_epochs}_layersP{hyper_param}.pickle', 'rb'))
+# hyper_param = '_'.join(str(e) for e in layer_widths)
+# params = pickle.load(open(f'../models/tfimAutoEncoder_latentnorm_ssb_nnParams_adam_epoch{num_epochs}_layersP{hyper_param}.pickle', 'rb'))
 
 ########################################################################################
 
 # print(sum(cal_m_reconstructed(autoencoder(model_params, x_test, 0, key)))/len(x_test))
 # print(loss(model_params, x_train, 0, key))
 
-x_rc = autoencoder(params, x_test, 0, key)   ## testing mode, set drop_p = 0
-m_rc = cal_m_reconstructed(x_rc)
-m_test = cal_m_reconstructed(x_test)
+# x_rc = autoencoder(params, x_test, 0, key)   ## testing mode, set drop_p = 0
+# m_rc = cal_m_reconstructed(x_rc)
+# m_test = cal_m_reconstructed(x_test)
 
-plt.figure()
-plt.plot(h_test.reshape(-1), m_test, 'o', color='blue', label=f'<m>')
-plt.plot(h_test.reshape(-1), m_rc, 'o', color='orange', label=f'<m>_rec')
-plt.legend(fontsize=fs-2)
-plt.xlabel('h', fontsize=fs)
-plt.ylabel('<m>', fontsize=fs)
+# plt.figure()
+# plt.plot(h_test.reshape(-1), m_test, 'o', color='blue', label=f'<m>')
+# plt.plot(h_test.reshape(-1), m_rc, 'o', color='orange', label=f'<m>_rec')
+# plt.legend(fontsize=fs-2)
+# plt.xlabel('h', fontsize=fs)
+# plt.ylabel('<m>', fontsize=fs)
 # plt.savefig(f'../figures/tfim_autoEncoder_ssb_reconstructed_magnetization_adam_epoch{num_epochs}_layersP{hyper_param}.pdf', bbox_inches='tight')
 # plt.savefig(f'../figures/tfim_autoEncoder_latentnorm_ssb_reconstructed_magnetization_adam_epoch{num_epochs}_layersP{hyper_param}.pdf', bbox_inches='tight')
 

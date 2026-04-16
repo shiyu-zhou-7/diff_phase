@@ -30,8 +30,8 @@ class HamConfig:
 
 @dataclass
 class ActiveConfig:
-    sample_radius_delta: float = 0.2
-    sample_radius_h: float = 0.2
+    sample_radius_delta: float = 0.05
+    sample_radius_h: float = 0.05
     num_samples_when_stalled: int = 1000
     center_coeff: float = 1e-3  # latent variance penalty in AE loss
     nan_jump_scale: float = 2.0   # jump length multiplier along last_dir

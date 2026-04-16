@@ -1,6 +1,8 @@
 
 import jax.numpy as np
 from jax import value_and_grad
+import pickle
+import matplotlib.pyplot as plt
 
 import optax
 
@@ -82,12 +84,12 @@ for i in range (L):
 
 ########################################################################################
 
-g_0 = 0.5
+g_0 = 0.3
 
 ########################################################################################
 
 lr = 1e-2
-epochs = 100
+epochs = 50
 
 opt = optax.adam(lr)
 opt_state = opt.init(g_0)
@@ -111,3 +113,29 @@ for i in range(epochs):
 
 ########################################################################################
 
+# save the data for plotting
+data = {
+    'g_list': g_list,
+    'loss_list': loss_list,
+}
+with open('dmrg_autoDiff_trajectory.pkl', 'wb') as f:
+    pickle.dump(data, f)
+
+########################################################################################
+
+gs = g_list
+
+fig, ax = plt.subplots()
+ax.plot(range(epochs), gs, 'o-', color='blue', markersize=2, lw=1)
+
+ax.set_xlabel("Epoch step", fontsize=14)
+ax.set_ylabel(r"$g$", fontsize=14)
+if len(gs) > 0:
+    g_min, g_max = min(gs), max(gs)
+    g_range = g_max - g_min
+    padding = 0.1 * g_range if g_range > 0 else 0.1
+    ax.set_ylim(g_min - padding, g_max + padding)
+ax.set_title("Hamiltonian Parameter Trajectory", fontsize=15)
+ax.grid(True)
+plt.tight_layout()
+plt.savefig(f'../figures/dmrg_tfim_L50_trajectory_g.3.pdf', bbox_inches='tight')
