@@ -9,7 +9,7 @@
 #SBATCH --output=/home/szhou3/diffphase/logs/xxz_dmrg_active_%j.out
 #SBATCH --error=/home/szhou3/diffphase/logs/xxz_dmrg_active_%j.err
 #SBATCH --signal=USR1@120
-#SBATCH --reservation=szhou3_75
+#SBATCH --reservation=szhou3_85
 
 module purge
 source /cm/shared/apps/anaconda3/2023.07-2/etc/profile.d/conda.sh
