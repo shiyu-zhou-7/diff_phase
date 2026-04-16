@@ -11,3 +11,5 @@ __pycache__
 *.out
 *.synctex.gz
 wandb
+*.pickle
+*.pkl
