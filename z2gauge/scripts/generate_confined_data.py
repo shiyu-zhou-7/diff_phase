@@ -261,7 +261,7 @@ if __name__ == "__main__":
 
 if __name__ == "__main__":
     # Configuration
-    Lx, Ly = 2, 3  # Lattice size
+    Lx, Ly = 3, 3  # Lattice size
     
     # Choose which dataset to generate
     print("=" * 60)

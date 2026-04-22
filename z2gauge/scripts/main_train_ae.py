@@ -14,7 +14,7 @@ from configs.config import AEConfig, ActiveConfig
 import matplotlib.pyplot as plt
 
 # ----- load ferro dataset -----
-Lx = 2
+Lx = 3
 Ly = 3
 N = 2 * Lx * Ly
 print(f"Lattice size: {Lx}x{Ly}, Qubits: {N}")

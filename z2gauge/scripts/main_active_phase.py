@@ -13,7 +13,7 @@ from configs.config import AEConfig, HamConfig, ActiveConfig
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # Optionally: load a pretrained AE and centroid
-Lx = 2
+Lx = 3
 Ly = 3
 N = 2 * Lx * Ly
 checkpoint_path = f'../models/z2gauge_ite_autoencoder_params_Lx{Lx}Ly{Ly}.pkl'

@@ -28,7 +28,7 @@ from configs.config import AEConfig, HamConfig, ActiveConfig, DMRGConfig
 
 with _devctx:
     try:
-        file = '../models/xxzhdmrg_autoencoder_params.pkl'
+        file = '../models/xxzhdmrg_autoencoder_params_L=10.pkl'
         checkpoint = load_pickle(file)
         init_params = checkpoint['params']
         ferro_centroid = checkpoint['centroid']
