@@ -12,7 +12,8 @@ from configs.config import AEConfig, DMRGConfig, HamConfig, ActiveConfig
 from dmrg.hamiltonians import XXZhX
 from dmrg.mps import get_random_MPS
 from dmrg.dmrg import DMRG
-from dmrg.dmrg import run_dmrg 
+from dmrg.dmrg import run_dmrg
+from dmrg.dmrg_numpy import run_dmrg_numpy
 
 from models.autoencoder import init_params as init_ae, fetch_latent
 from training.ae_train import train_autoencoder
@@ -37,26 +38,16 @@ def generate_data_xxzh(L, deltas, hs, observables_list, dmrg_cfg):
     rows = []
     for delta, h in zip(np.array(deltas), np.array(hs)):
 
-        # initialize random product state and Hamiltonian
-        model = XXZhX(L, delta, h)
-        psi = run_dmrg(L, model, dmrg_cfg)
+        psi = run_dmrg_numpy(L, float(delta), float(h), dmrg_cfg)
 
-        # Compute observables
         obs_list = psi.get_site_exp_val(observables_list)
-        obs_vec = jnp.stack(
-            [jnp.real(jnp.asarray(x)).reshape(()) for x in obs_list],
+        obs_vec = np.stack(
+            [np.real(np.asarray(x)).reshape(()) for x in obs_list],
             axis=0
-        ) # shape (len(observables_list),)
-
-
-        # use one-site update rule to compute observables
-        # mps, _ = dmrg_E(L, delta, h, conf=1e-4, test=False, chi_max=dmrg_cfg.max_bond, max_sweep=dmrg_cfg.sweeps)
-        # obs = jnp.asarray(cal_observables(mps, observables_list))
-        
+        )
         rows.append(obs_vec)
 
-    data = jnp.stack(rows, axis=0)
-    return data
+    return jnp.array(np.stack(rows, axis=0))
 
 
 def active_phase_discovery(L=20, init_delta=-1.5, init_h=0.3,
