@@ -62,7 +62,7 @@ HISTORY_H       = -0.3
 MAX_OUTER_ITERS = 6
 # ──────────────────────────────────────────────────────────────────────────────
 
-ae_cfg   = AEConfig()
+ae_cfg   = replace(AEConfig(), seed=72849163)
 ham_cfg  = HamConfig()
 dmrg_cfg = DMRGConfig()
 act_cfg  = replace(
