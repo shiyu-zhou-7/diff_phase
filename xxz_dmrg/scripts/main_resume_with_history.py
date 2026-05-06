@@ -63,7 +63,8 @@ MAX_OUTER_ITERS = 6
 # ──────────────────────────────────────────────────────────────────────────────
 
 # ae_cfg   = replace(AEConfig(), seed=72849163)  # run 430431
-ae_cfg   = replace(AEConfig(), seed=83952505)
+# ae_cfg   = replace(AEConfig(), seed=83952505)  # run 435990
+ae_cfg   = replace(AEConfig(), seed=50678225)
 ham_cfg  = HamConfig()
 dmrg_cfg = DMRGConfig()
 act_cfg  = replace(
