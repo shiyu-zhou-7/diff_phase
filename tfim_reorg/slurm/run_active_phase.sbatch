@@ -25,5 +25,7 @@ git pull origin main
 
 cd /home/szhou3/diffphase/diff_phase/tfim_reorg/scripts/
 export JAX_PLATFORMS=cpu
-export H_INIT=-1.5
+# H_INIT overridable at submission: H_INIT=-0.3 sbatch --export=ALL ...
+export H_INIT=${H_INIT:--1.5}
+echo "[sbatch] running main_active_phase.py with H_INIT=${H_INIT}"
 python -u main_active_phase.py
