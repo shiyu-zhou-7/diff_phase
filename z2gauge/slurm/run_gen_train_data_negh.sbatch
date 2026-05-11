@@ -10,8 +10,10 @@
 # CPU-only JAX (no GPU needed for ITE on the 4096-dim Hilbert space)
 export JAX_PLATFORMS=cpu
 
-# Load conda
-source ~/.bashrc
+# Load conda (use the system-wide init; `source ~/.bashrc` doesn't reliably
+# expose `conda` in a non-interactive sbatch shell).
+module purge
+source /cm/shared/apps/anaconda3/2023.07-2/etc/profile.d/conda.sh
 conda activate test
 
 # === run ===
