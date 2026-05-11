@@ -1,3 +1,4 @@
+import os
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -13,13 +14,21 @@ from utils.io import save_pickle
 from configs.config import AEConfig, ActiveConfig
 import matplotlib.pyplot as plt
 
+# ── env-var overrides so the same script trains either phase's AE.
+#   sbatch --export=ALL,LX=2,LY=3,DATA_PATH=../data/data_ite_confined_2x3_h-1.0_to_-0.4_n1000.pkl,PHASE_TAG=confined run_ae.sbatch
+# Defaults preserve the prior hardcoded behavior (Lx=Ly=3, default data file, no phase suffix).
+Lx         = int(os.environ.get('LX', 3))
+Ly         = int(os.environ.get('LY', 3))
+DATA_PATH  = os.environ.get('DATA_PATH', f'../data/data_ite_confined_{Lx}x{Ly}_n1000.pkl')
+PHASE_TAG  = os.environ.get('PHASE_TAG', 'params')   # output file suffix; 'params' preserves the legacy name
+
 # ----- load ferro dataset -----
-Lx = 3
-Ly = 3
 N = 2 * Lx * Ly
 print(f"Lattice size: {Lx}x{Ly}, Qubits: {N}")
+print(f"Data path:    {DATA_PATH}")
+print(f"Phase tag:    {PHASE_TAG}")
 
-with open(f'../data/data_ite_confined_{Lx}x{Ly}_n1000.pkl', 'rb') as f:
+with open(DATA_PATH, 'rb') as f:
     data = np.array(pickle.load(f))
 np.random.shuffle(data)
 
@@ -149,5 +158,6 @@ plt.tight_layout()
 plt.savefig(f'../figures/z2gauge_ite_wilson_entropy_reconstruction_{Lx}x{Ly}_epoch{ae_cfg.epochs}.pdf', bbox_inches='tight')
 print(f"\nPlot saved to ../figures/z2gauge_wilson_entropy_reconstruction_{Lx}x{Ly}_epoch{ae_cfg.epochs}.pdf")
 
-save_pickle({'params': params, 'centroid': np.array(ferro_centroid)}, f'../models/z2gauge_ite_autoencoder_params_Lx{Lx}Ly{Ly}.pkl')
-print(f'Saved AE params to ../models/z2gauge_autoencoder_params_Lx{Lx}Ly{Ly}.pkl')
+out_path = f'../models/z2gauge_ite_autoencoder_{PHASE_TAG}_Lx{Lx}Ly{Ly}.pkl'
+save_pickle({'params': params, 'centroid': np.array(ferro_centroid)}, out_path)
+print(f'Saved AE params to {out_path}')

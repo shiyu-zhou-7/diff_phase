@@ -76,7 +76,7 @@ def active_phase_discovery(Lx, Ly, h_init,
     # bootstrap centroid if not provided
     if ferro_centroid is None:
         key, sub = jax.random.split(key)
-        hs = sample_params(h_init, 1000, 0.5, sub)
+        hs = sample_params(h_init, act_cfg.num_samples_when_stalled, act_cfg.sample_radius_h, sub)
         X = generate_states(hs, star_ops, trans_ops)
         init_ae_params = train_autoencoder(init_ae_params, X, epochs=ae_cfg.epochs, lr=ae_cfg.lr, weight_decay=ae_cfg.weight_decay, drop_p=ae_cfg.dropout_p, center_coeff=act_cfg.center_coeff, seed=ae_cfg.seed)
         Z = fetch_latent(init_ae_params, X, jax.random.PRNGKey(0))

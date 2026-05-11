@@ -27,7 +27,11 @@ MAX_STEPS_BLOCK  = os.environ.get('MAX_STEPS_BLOCK')   # max inner h-steps per o
 PARAM_TOL_CHANGE = os.environ.get('PARAM_TOL_CHANGE')  # set to 0 to disable early-stop break in inner loop
 
 N = 2 * Lx * Ly
-checkpoint_path = f'../models/z2gauge_ite_autoencoder_params_Lx{Lx}Ly{Ly}.pkl'
+
+# Auto-select the AE that matches the phase of h_init.
+# Convention: deconfined when |h|<0.3, confined when |h|>0.3.
+phase = 'deconfined' if abs(H_INIT) < 0.3 else 'confined'
+checkpoint_path = f'../models/z2gauge_ite_autoencoder_{phase}_Lx{Lx}Ly{Ly}.pkl'
 init_params = None
 ferro_centroid = None
 
@@ -41,8 +45,10 @@ if PARAM_TOL_CHANGE is not None:
     ham_cfg = replace(ham_cfg, param_tol_change=float(PARAM_TOL_CHANGE))
 
 print(f'z2gauge ite active phase discovery with Lx={Lx} Ly={Ly} h_init={H_INIT} '
+      f'(|h_init|={abs(H_INIT):.4f} -> phase={phase!r}) '
       f'max_outer_iters={MAX_ITERS} ham_lr={ham_cfg.lr} '
       f'max_steps_block={ham_cfg.max_steps_block} param_tol_change={ham_cfg.param_tol_change}')
+print(f'AE checkpoint path: {checkpoint_path}')
 
 if os.path.exists(checkpoint_path):
     try:
