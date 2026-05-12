@@ -101,9 +101,29 @@ def fetch_latent(params, x, drop_p=0.0, rng_key=None, normalize=False, eps=0.0):
     return _encoder_raw(params[0:mid], x, drop_p, rng_key)
 
 
-def ae_loss(params, x, drop_p, rng_key):
-    """Mean per-sample sqrt-MSE between input and AE reconstruction."""
-    x_out = autoencoder(params, x, drop_p, rng_key)
-    l = (x_out - x) ** 2
-    l = jnp.einsum('ij->i', l)
-    return jnp.mean(jnp.sqrt(l))
+def ae_loss(params, x, drop_p, rng_key, center_coeff=1e-3):
+    """Quantum-fidelity reconstruction loss + latent-variance penalty.
+
+    Reconstruction (fidelity):
+        1 - mean_batch ( ⟨ψ|ψ̂⟩² ),  ψ and ψ̂ unit-normalised.
+    Latent-variance penalty:
+        center_coeff * mean_dims ( Var_batch(z_i) ).
+
+    Squaring the overlap removes the unphysical |ψ⟩ vs −|ψ⟩ sign indifference
+    (same quantum state up to a global phase). The variance penalty keeps the
+    encoded latents from spreading out as a cheap reconstruction shortcut.
+    """
+    eps = 1e-12
+    x = x / (jnp.linalg.norm(x, axis=-1, keepdims=True) + eps)
+
+    rng_key, sub_ae = jax.random.split(rng_key)
+    x_hat = autoencoder(params, x, drop_p, sub_ae)
+    overlap = jnp.sum(x * x_hat, axis=-1)
+    recon = 1.0 - jnp.mean(overlap ** 2)
+
+    rng_key, sub_enc = jax.random.split(rng_key)
+    mid = len(params) // 2
+    z = encoder(params[:mid], x, 0.0, sub_enc)
+    var_pen = jnp.mean(jnp.var(z, axis=0))
+
+    return recon + center_coeff * var_pen

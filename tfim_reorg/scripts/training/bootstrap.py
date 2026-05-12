@@ -73,6 +73,7 @@ def train_ae_and_centroid(x_train, ae_cfg, rng_key, eps_norm=1e-8):
         log_every=ae_cfg.log_every,
         eval_every=ae_cfg.eval_every,
         seed=train_seed,
+        center_coeff=ae_cfg.center_coeff,
     )
     trained_params = hist['params']
 

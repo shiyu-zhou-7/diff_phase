@@ -36,6 +36,7 @@ def train_autoencoder(
     log_every=100,
     eval_every=20,
     seed=0,
+    center_coeff=1e-3,
 ):
     """
     Trains the AE in-place-style (returns new params + history).
@@ -54,7 +55,9 @@ def train_autoencoder(
 
     @jit
     def update(params, x, opt_state, rng_key):
-        value, grads = value_and_grad(ae_loss, argnums=0)(params, x, drop_p, rng_key)
+        value, grads = value_and_grad(ae_loss, argnums=0)(
+            params, x, drop_p, rng_key, center_coeff,
+        )
         updates, opt_state = opt.update(grads, opt_state)
         params = optax.apply_updates(params, updates)
         return params, opt_state, value
@@ -73,7 +76,7 @@ def train_autoencoder(
         if i % log_every == 0:
             val_loss = None
             if x_test is not None:
-                val_loss = float(ae_loss(params, x_test, 0.0, key))
+                val_loss = float(ae_loss(params, x_test, 0.0, key, center_coeff))
                 val_loss_list.append((val_loss, i))
                 m_recon = cal_m_reconstructed(autoencoder(params, x_test, 0.0, key))
                 m_avg = float(sum(m_recon) / len(m_recon))
