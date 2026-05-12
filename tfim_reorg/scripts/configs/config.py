@@ -30,7 +30,7 @@ class HamConfig:
     max_steps_block: int = 200        # max inner Adam steps per outer block
     stall_window: int = 25            # consecutive low-progress steps to declare stall
     stall_tol_loss: float = 1e-4
-    stall_tol_grad: float = 1e-4
+    stall_tol_grad: float = 5e-3       # threshold on EMA(grad) magnitude
     param_tol_change: float = 1e-4
     nan_lr_mult: float = 10.0         # temporary lr multiplier on NaN recovery
     nan_lr_steps: int = 5             # how many steps to keep boosted lr
@@ -39,7 +39,7 @@ class HamConfig:
 @dataclass
 class ActiveConfig:
     bootstrap_radius_init: float = 0.3        # initial circle radius around h_init
-    bootstrap_radius_retrain: float = 0.1     # tight retrain radius around current h
+    bootstrap_radius_retrain: float = 0.3     # retrain radius around each historical center
     num_samples_init: int = 1000              # ED samples for the FIRST (initial) bootstrap circle
     num_samples_bootstrap: int = 500          # ED samples per circle on every retrain
     max_outer_iters: int = 5                  # max bootstrap retrains per run

@@ -78,6 +78,11 @@ def _run_inner_block(
     consecutive_failed_kicks = 0
     key = rng_key
 
+    # EMA of gradient (smooth out dropout noise in the loss).
+    # alpha = 1/stall_window so the smoothing horizon matches the stall window.
+    ema_alpha = 1.0 / max(1, ham_cfg.stall_window)
+    ema_grad = 0.0
+
     for step in range(ham_cfg.max_steps_block):
         key, sub = jax.random.split(key)
         lr_mult = ham_cfg.nan_lr_mult if boost_remaining > 0 else 1.0
@@ -111,7 +116,6 @@ def _run_inner_block(
 
         consecutive_failed_kicks = 0
         step_dir = h_new - h
-        change = float(jnp.abs(step_dir))
 
         h = h_new
         opt_state = opt_state_new
@@ -119,7 +123,13 @@ def _run_inner_block(
         last_dir = float(step_dir)
         boost_remaining = max(0, boost_remaining - 1)
 
-        if change < ham_cfg.param_tol_change:
+        # Stall detection on the EMA-smoothed gradient. The instantaneous grad
+        # is inflated by dropout noise inside fetch_latent (~1e-2 even when h
+        # has converged); EMA over the stall window removes the noise and
+        # approaches the true mean gradient direction (~0 at a local minimum).
+        ema_grad = (1.0 - ema_alpha) * ema_grad + ema_alpha * float(grad)
+        # Require at least `stall_window` warmup steps before EMA can fire.
+        if step >= ham_cfg.stall_window and abs(ema_grad) < ham_cfg.stall_tol_grad:
             consecutive_stall += 1
         else:
             consecutive_stall = 0
