@@ -21,7 +21,7 @@ conda activate test
 cd /home/szhou3/diffphase/diff_phase
 git fetch origin main
 # git sparse-checkout init --cone
-git sparse-checkout set z2gauge
+git sparse-checkout set tfim_reorg z2gauge xxz_dmrg
 git checkout main
 git pull origin main
 

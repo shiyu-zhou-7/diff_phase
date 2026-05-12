@@ -19,7 +19,7 @@ mkdir -p /home/szhou3/diffphase/logs
 
 cd /home/szhou3/diffphase/diff_phase
 git fetch origin main
-git sparse-checkout set tfim_reorg
+git sparse-checkout set tfim_reorg z2gauge xxz_dmrg
 git checkout main
 git pull origin main
 
