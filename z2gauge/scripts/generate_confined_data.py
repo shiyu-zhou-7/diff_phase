@@ -54,21 +54,24 @@ def generate_confined_phase_data(
     
     data = []
     h_values = np.linspace(h_range[0], h_range[1], n_samples)
-    
+
     print("\nGenerating ground states...")
-    base_key = jax.random.PRNGKey(seed)
+    # Use a FIXED ITE init-state key per sample so the same H(h) always converges
+    # to the same Z2 twin. This matches the optim path (ham_optimize.py also uses
+    # jax.random.PRNGKey(0)), so training latents and optim-time latents share the
+    # same twin-selection convention.
+    fixed_key = jax.random.PRNGKey(0)
     for i, h in enumerate(tqdm(h_values)):
-        key = jax.random.fold_in(base_key, i)
         ground_state, ground_energy = ite_ground_state_from_params(
             j_a_fixed,
-            -float(h),
+            float(h),                # NO sign flip — H(j_a, h) matches optim's hamiltonian(j_a, h)
             star_ops,
             trans_ops,
             n_steps=ite_steps,
             dt=ite_dt,
-            key=key,
+            key=fixed_key,
         )
-        
+
         # Store data
         data.append({
             'v': ground_state,  # Ground state wavefunction
@@ -79,53 +82,68 @@ def generate_confined_phase_data(
             'Ly': Ly,
             'phase': 'confined'
         })
-    
+
     return data
 
 
-def generate_deconfined_phase_data(Lx, Ly, j_a_fixed=-1.0, h_range=(0.01, 0.3), n_samples=100):
+def generate_deconfined_phase_data(
+    Lx,
+    Ly,
+    j_a_fixed=-1.0,
+    h_range=(0.01, 0.3),
+    n_samples=100,
+    ite_steps=300,
+    ite_dt=1e-2,
+    seed=3458923,
+):
     """
-    Generate ground state wavefunctions in the deconfined phase.
-    
-    Deconfined phase: |j_a| >> h (star operators dominate)
-    
+    Generate ground state wavefunctions in the deconfined phase via ITE.
+
+    Deconfined phase: |j_a| >> h (star operators dominate). Uses imaginary-time
+    evolution (matches generate_confined_phase_data); avoids the eigh path which
+    can pick arbitrary basis-aligned eigenvectors in the degenerate ground
+    subspace at small |h|.
+
     Args:
         Lx, Ly: Lattice dimensions
         j_a_fixed: Fixed star operator coupling (negative for attractive)
         h_range: Range of transverse field strengths (small)
         n_samples: Number of different h values to sample
-    
+
     Returns:
         List of dictionaries containing ground states and parameters
     """
     n_qubits = 2 * Lx * Ly
     dim = 2**n_qubits
-    
-    print(f"Generating deconfined phase data for {Lx}×{Ly} lattice")
+
+    print(f"Generating deconfined phase data (ITE) for {Lx}×{Ly} lattice")
     print(f"Number of qubits: {n_qubits}, Hilbert space dim: {dim}")
     print(f"j_a = {j_a_fixed}, h ∈ [{h_range[0]}, {h_range[1]}]")
-    print(f"Samples: {n_samples}\n")
-    
-    # Pre-compute operators
+    print(f"Samples: {n_samples}, ite_steps={ite_steps}, dt={ite_dt}\n")
+
     print("Computing star operators...")
     star_ops = sum_star_operators(Lx, Ly)
     print("Computing transverse field...")
     trans_ops = transverse_field(Lx, Ly)
-    
+
     data = []
     h_values = np.linspace(h_range[0], h_range[1], n_samples)
-    
+
     print("\nGenerating ground states...")
+    # Same fixed-key + no-sign-flip convention as generate_confined_phase_data
+    # — keeps the twin choice consistent with the optim path.
+    fixed_key = jax.random.PRNGKey(0)
     for i, h in enumerate(tqdm(h_values)):
-        # Construct Hamiltonian
-        H = hamiltonian(j_a=j_a_fixed, h=-h, star_ops=star_ops, trans_ops=trans_ops)
-        
-        # Get ground state
-        eigenvalues, eigenvectors = jnp.linalg.eigh(H)
-        ground_state = eigenvectors[:, 0]
-        ground_energy = eigenvalues[0]
-        
-        # Store data
+        ground_state, ground_energy = ite_ground_state_from_params(
+            j_a_fixed,
+            float(h),
+            star_ops,
+            trans_ops,
+            n_steps=ite_steps,
+            dt=ite_dt,
+            key=fixed_key,
+        )
+
         data.append({
             'v': ground_state,
             'E': ground_energy,
@@ -135,7 +153,7 @@ def generate_deconfined_phase_data(Lx, Ly, j_a_fixed=-1.0, h_range=(0.01, 0.3), 
             'Ly': Ly,
             'phase': 'deconfined'
         })
-    
+
     return data
 
 

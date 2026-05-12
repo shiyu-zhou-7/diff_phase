@@ -41,12 +41,15 @@ def generate_states(hs, star_ops, trans_ops, ite_steps=150, ite_dt=1e-2, seed=0)
     print(f"==== generate_states ====")
     print(f"number of samples: {len(hs)}, ite_steps: {ite_steps}, ite_dt: {ite_dt}")
     ## ite version
+    # Fixed ITE init-state key so this path produces the same Z2 twin as the
+    # optim path (ham_optimize.py uses jax.random.PRNGKey(0) too). Without this,
+    # bootstrap/refresh AE training would see a mixed-twin dataset that the optim
+    # cannot exploit consistently.
     states = []
-    base_key = jax.random.PRNGKey(seed)
+    fixed_key = jax.random.PRNGKey(0)
     for i, h in enumerate(np.array(hs)):
-        key = jax.random.fold_in(base_key, i)
         v, _ = ite_ground_state_from_params(-1.0, float(h), star_ops, trans_ops,
-                                            n_steps=ite_steps, dt=ite_dt, key=key)
+                                            n_steps=ite_steps, dt=ite_dt, key=fixed_key)
         states.append(v)
     return jnp.stack(states, axis=0)
 
