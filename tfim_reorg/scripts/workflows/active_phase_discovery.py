@@ -235,6 +235,13 @@ def run_active_phase_discovery(
         if outer_iter == active_cfg.max_outer_iters:
             break
 
+        # Retrain only when the inner block actually stalled. If it exited via
+        # 'max_steps' the optimizer was still moving; the next inner block
+        # picks up at current_h with the same AE.
+        if inner['exit_reason'] != 'stall':
+            print(f'[active]   exit_reason={inner["exit_reason"]} -> skip retrain')
+            continue
+
         # 2d: retrain
         bootstrap_history.append(current_h)
         rng_key, retrain_key = jax.random.split(rng_key)
