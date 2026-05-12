@@ -5,7 +5,7 @@
 #SBATCH --time=24:00:00
 #SBATCH --partition=longq
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=64G
+#SBATCH --mem=128G
 
 # CPU-only JAX (no GPU needed for ITE on the 4096-dim Hilbert space)
 export JAX_PLATFORMS=cpu

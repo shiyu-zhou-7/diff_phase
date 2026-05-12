@@ -49,6 +49,7 @@ if __name__ == "__main__":
         j_a_fixed=-1.0,
         h_range=(-1.0, -0.4),
         n_samples=n_samples,
+        ite_steps=150,        # 300 default caused OOM at sample ~770 on 64 GB; 150 is plenty (matches earlier successful runs)
     )
     save(data_c, f'../data/data_ite_confined_{Lx}x{Ly}_h-1.0_to_-0.4_n{n_samples}.pkl')
     print(f"  elapsed: {time.time() - t0:.1f} s")
@@ -61,6 +62,7 @@ if __name__ == "__main__":
         j_a_fixed=-1.0,
         h_range=(-0.2, -0.001),
         n_samples=n_samples,
+        ite_steps=150,        # same — keep parity with confined path; 150 sufficient for ITE projection here
     )
     save(data_d, f'../data/data_ite_deconfined_{Lx}x{Ly}_h-0.2_to_-0.001_n{n_samples}.pkl')
     print(f"  elapsed: {time.time() - t0:.1f} s")
