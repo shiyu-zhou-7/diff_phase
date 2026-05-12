@@ -18,6 +18,7 @@ import sys
 import pickle
 import time
 
+import jax
 from jax import config
 config.update("jax_enable_x64", True)
 
@@ -53,6 +54,13 @@ if __name__ == "__main__":
     )
     save(data_c, f'../data/data_ite_confined_{Lx}x{Ly}_h-1.0_to_-0.4_n{n_samples}.pkl')
     print(f"  elapsed: {time.time() - t0:.1f} s")
+
+    # Release XLA JIT cache before starting the second phase to avoid LLVM
+    # "Cannot allocate memory" when the cumulative cached graphs exceed
+    # LLVM's per-process limit (manifested as SIGSEGV at sample ~770 of
+    # deconfined when both phases ran in one process — jobs 491499, 491527).
+    print("\nClearing JAX caches between phases...")
+    jax.clear_caches()
 
     # Deconfined: |h| < 0.3, negative side
     t0 = time.time()
