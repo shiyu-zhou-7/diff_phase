@@ -23,7 +23,7 @@ and the optim path (training/optim_h.py).
 import jax
 import jax.numpy as jnp
 
-from hamiltonian.ite import ite_ground_state_from_params
+from hamiltonian.ite import ite_ground_state_from_params, ite_ground_state_batched
 from models.autoencoder import init_params, fetch_latent
 from training.ae_train import train_autoencoder
 
@@ -52,16 +52,27 @@ def sample_circle(
         maxval=h_center + radius,
     )
 
-    x_list = []
-    for h in h_samples:
-        v, _ = ite_ground_state_from_params(
-            j_a, float(h),
-            star_ops, trans_ops,
-            n_steps=ite_n_steps, dt=ite_dt,
-            key=_TWIN_KEY,
-        )
-        x_list.append(v)
-    x_train = jnp.stack(x_list, axis=0)
+    # Batched ITE path: single JAX dispatch; star/trans ops are shared across
+    # all B samples so we never materialize the per-sample (D, D) Hamiltonian.
+    x_train, _ = ite_ground_state_batched(
+        j_a, h_samples,
+        star_ops, trans_ops,
+        n_steps=ite_n_steps, dt=ite_dt,
+        key=_TWIN_KEY,
+    )
+
+    # --- Legacy single-sample loop (kept commented for easy revert) ---------
+    # x_list = []
+    # for h in h_samples:
+    #     v, _ = ite_ground_state_from_params(
+    #         j_a, float(h),
+    #         star_ops, trans_ops,
+    #         n_steps=ite_n_steps, dt=ite_dt,
+    #         key=_TWIN_KEY,
+    #     )
+    #     x_list.append(v)
+    # x_train = jnp.stack(x_list, axis=0)
+    # ------------------------------------------------------------------------
 
     return {'h_samples': h_samples, 'x_train': x_train}
 
