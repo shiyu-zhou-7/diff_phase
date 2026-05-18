@@ -63,9 +63,13 @@ ae_cfg     = AEConfig()
 active_cfg = ActiveConfig()
 
 # Rebuild the AE layer widths from the actual lattice (D_in = 2^(2*Lx*Ly)).
+# Preserve hidden_dim and latent_dim from the AEConfig defaults so edits to
+# config.py flow through.
 N = 2 * Lx * Ly
 D_in = 2 ** N
-ae_cfg = replace(ae_cfg, layer_widths=(D_in, 500, 10, 500, D_in))
+hidden_dim = ae_cfg.layer_widths[1]
+latent_dim = ae_cfg.layer_widths[2]
+ae_cfg = replace(ae_cfg, layer_widths=(D_in, hidden_dim, latent_dim, hidden_dim, D_in))
 
 if 'EPOCHS' in os.environ:
     ae_cfg = replace(ae_cfg, epochs=int(os.environ['EPOCHS']))
