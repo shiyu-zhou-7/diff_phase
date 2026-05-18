@@ -49,8 +49,8 @@ class HamConfig:
 class ActiveConfig:
     bootstrap_radius_init: float = 0.05       # initial circle radius around h_init (z2gauge boundary at |h|=0.3 → keep circles well inside one phase)
     bootstrap_radius_retrain: float = 0.05    # retrain radius around each historical center
-    num_samples_init: int = 1000              # ITE samples for the FIRST (initial) bootstrap circle
-    num_samples_bootstrap: int = 500          # ITE samples per circle on every retrain
+    num_samples_init: int = 500               # ITE samples for the FIRST (initial) bootstrap circle
+    num_samples_bootstrap: int = 250          # ITE samples per circle on every retrain
     max_outer_iters: int = 5                  # max bootstrap retrains per run
     nan_jump_scale: float = 2.0               # multiplier on last_dir for momentum kick
     nan_jump_noise: float = 0.05              # random kick magnitude (first NaN, no last_dir)
