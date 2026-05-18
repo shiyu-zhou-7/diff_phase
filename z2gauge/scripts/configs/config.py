@@ -47,8 +47,8 @@ class HamConfig:
 
 @dataclass
 class ActiveConfig:
-    bootstrap_radius_init: float = 0.1        # initial circle radius around h_init (smaller than TFIM: z2gauge boundary is at 0.3)
-    bootstrap_radius_retrain: float = 0.1     # retrain radius around each historical center
+    bootstrap_radius_init: float = 0.05       # initial circle radius around h_init (z2gauge boundary at |h|=0.3 → keep circles well inside one phase)
+    bootstrap_radius_retrain: float = 0.05    # retrain radius around each historical center
     num_samples_init: int = 200               # ITE samples for the FIRST (initial) bootstrap circle
     num_samples_bootstrap: int = 100          # ITE samples per circle on every retrain
     max_outer_iters: int = 5                  # max bootstrap retrains per run
