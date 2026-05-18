@@ -1,24 +1,93 @@
+"""
+Autoencoder training loop for z2gauge ground-state wavefunctions.
+
+Adam optimizer, MSE-style loss (see models.autoencoder.ae_loss).
+
+Mirrors tfim_reorg/scripts/training/ae_train.py: returns a dict with the
+trained params plus per-epoch history, so callers can pull
+`hist['params']` and inspect `hist['loss_list']`.
+"""
+import numpy as np
 import jax
 import jax.numpy as jnp
-import numpy as np
+from jax import value_and_grad, jit
 import optax
-from models.autoencoder import init_params, ae_update, make_ae_step, autoencoder
+
+from models.autoencoder import ae_loss, autoencoder, encoder
 
 
-def train_autoencoder(init_params_list, x_train, epochs=1000, lr=1e-4, weight_decay=1e-4, drop_p=0.05, center_coeff=1e-3, seed=0):
+def _evaluate_latent(params, x_a, x_b, rng_key):
+    """Run the encoder on two phase-labeled batches; returns (latent_a, latent_b)."""
+    mid = len(params) // 2
+    z_a = encoder(params[0:mid], x_a, 0.0, rng_key)
+    z_b = encoder(params[0:mid], x_b, 0.0, rng_key)
+    return z_a, z_b
+
+
+def train_autoencoder(
+    params,
+    x_train,
+    *,
+    x_test=None,
+    x_para_eval=None,
+    epochs=1000,
+    lr=1e-4,
+    drop_p=0.1,
+    log_every=100,
+    eval_every=20,
+    seed=0,
+    center_coeff=1e-3,
+):
+    """
+    Trains the AE in-place-style (returns new params + history).
+
+    Returns a dict with:
+      - 'params'                : trained parameters
+      - 'loss_list'             : training loss per epoch
+      - 'val_loss_list'         : [(val_loss, epoch), ...] every `log_every`
+      - 'latent_a_list'         : [(latent_z_a, epoch), ...] every `eval_every`
+      - 'latent_b_list'         : [(latent_z_b, epoch), ...] every `eval_every`
+    """
+    opt = optax.adam(learning_rate=lr)
+    opt_state = opt.init(params)
     key = jax.random.PRNGKey(seed)
 
-    opt = optax.adamw(learning_rate=lr, weight_decay=weight_decay)
-    step = make_ae_step(opt)              # capture opt in closure (not traced)
-    opt_state = opt.init(init_params_list)
+    @jit
+    def update(params, x, opt_state, rng_key):
+        value, grads = value_and_grad(ae_loss, argnums=0)(
+            params, x, drop_p, rng_key, center_coeff,
+        )
+        updates, opt_state = opt.update(grads, opt_state)
+        params = optax.apply_updates(params, updates)
+        return params, opt_state, value
 
-    params = init_params_list
+    loss_list = []
+    val_loss_list = []
+    latent_a_list = []
+    latent_b_list = []
+
     for i in range(epochs):
         key, sub = jax.random.split(key)
-        # params, opt_state, _ = ae_update(params, x_train, opt_state, opt, drop_p, sub, center_coeff)
-        params, opt_state, loss_val = step(params, x_train, opt_state, drop_p, sub, center_coeff)
+        params, opt_state, loss_val = update(params, x_train, opt_state, sub)
+        loss_list.append(float(loss_val))
 
-        if (i+1) % 500 == 0 or i == 0:
-            print(f'  AE Epoch {i+1:4d} / {epochs}, Loss: {loss_val:.6e}')
+        if i % log_every == 0:
+            if x_test is not None:
+                val_loss = float(ae_loss(params, x_test, 0.0, key, center_coeff))
+                val_loss_list.append((val_loss, i))
+                print(f'  AE epoch {i+1:5d}/{epochs} loss={float(loss_val):.6e} val_loss={val_loss:.6e}')
+            else:
+                print(f'  AE epoch {i+1:5d}/{epochs} loss={float(loss_val):.6e}')
 
-    return params
+        if i % eval_every == 0 and x_test is not None and x_para_eval is not None:
+            z_a, z_b = _evaluate_latent(params, x_test, x_para_eval, key)
+            latent_a_list.append((np.asarray(z_a), i))
+            latent_b_list.append((np.asarray(z_b), i))
+
+    return {
+        'params': params,
+        'loss_list': loss_list,
+        'val_loss_list': val_loss_list,
+        'latent_a_list': latent_a_list,
+        'latent_b_list': latent_b_list,
+    }

@@ -11,7 +11,7 @@ from models.autoencoder import init_params, autoencoder, fetch_latent
 from training.ae_train import train_autoencoder
 from hamiltonian.z2ham import *
 from utils.io import save_pickle
-from configs.config import AEConfig, ActiveConfig
+from configs.config import AEConfig
 import matplotlib.pyplot as plt
 
 # ── env-var overrides so the same script trains either phase's AE.
@@ -45,19 +45,20 @@ D = 2 ** N
 
 # ----- build & train -----
 ae_cfg = AEConfig()
-act_cfg = ActiveConfig()
 key = jax.random.PRNGKey(ae_cfg.seed)
-layers = [D, 512, ae_cfg.latent_dim, 512, D]
+# layer_widths default in AEConfig is sized for Lx=2 Ly=3 (D_in=4096); rebuild
+# from the actual data dimension so the script works at any lattice size.
+layers = [D, 500, 10, 500, D]
 key, sub = jax.random.split(key)
-params = init_params(layers, sub)
+params = init_params(layers, sub, scale=ae_cfg.init_scale)
 
-params = train_autoencoder(params, X_train,
-                           epochs=ae_cfg.epochs,
-                           lr=ae_cfg.lr,
-                           weight_decay=ae_cfg.weight_decay,
-                           drop_p=ae_cfg.dropout_p,
-                           center_coeff=act_cfg.center_coeff,
-                           seed=ae_cfg.seed)
+hist = train_autoencoder(params, X_train,
+                         epochs=ae_cfg.epochs,
+                         lr=ae_cfg.lr,
+                         drop_p=ae_cfg.dropout_p,
+                         center_coeff=ae_cfg.center_coeff,
+                         seed=ae_cfg.seed)
+params = hist['params']
 
 Z = fetch_latent(params, X_train, jax.random.PRNGKey(0))
 ferro_centroid = jnp.mean(Z, axis=0)

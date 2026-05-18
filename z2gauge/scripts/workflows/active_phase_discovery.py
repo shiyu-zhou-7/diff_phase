@@ -1,227 +1,289 @@
+"""
+Active phase discovery workflow for z2gauge.
+
+Outer loop:
+  1. Bootstrap an AE around h_init (training/bootstrap.py:bootstrap_ae).
+  2. Repeat for active_cfg.max_outer_iters retrains:
+       a. Inner block of Adam steps on h with the soft-normalized latent-distance
+          loss (_ae_latent_loss from training/optim_h.py), evaluated via ITE.
+       b. NaN events trigger a kick + temporary lr boost. 3 consecutive failed
+          kicks raise RuntimeError.
+       c. Stall (EMA(grad) magnitude below tol for stall_window steps) ends
+          the inner block.
+       d. If exit_reason == 'stall', append the current h to bootstrap_history
+          and retrain the AE on the full accumulated history
+          (training/bootstrap.py:retrain_with_history).
+  3. Return a results bundle for downstream plotting and pickling.
+
+Public:
+  run_active_phase_discovery(h_init, j_a, star_ops, trans_ops, ham_cfg, ae_cfg,
+                             active_cfg, rng_key, checkpoint_path=None)
+
+Private helpers:
+  _run_inner_block, _apply_kick
+"""
+from dataclasses import asdict
+
 import jax
 import jax.numpy as jnp
-import numpy as np
-import pickle
+from jax import value_and_grad, jit
 import optax
-import matplotlib.pyplot as plt
-from datetime import datetime
 
-from configs.config import AEConfig, HamConfig, ActiveConfig
-from hamiltonian.z2ham import *
-from models.autoencoder import init_params as init_ae, fetch_latent
-from training.ae_train import train_autoencoder
-from training.ham_optimize import ham_update, make_ham_step
+from training.bootstrap import bootstrap_ae, retrain_with_history
+from training.optim_h import _ae_latent_loss
 from utils.io import save_pickle
-from hamiltonian.ite import ite_ground_state_from_params
 
 
-def sample_params(h_init, n, rad_h, key):
-    print(f"==== sample_params ====")
-    print(f"h_init: {h_init}, n: {n}, rad_h: {rad_h}")
-    _, kh = jax.random.split(key)
-    hs     = h_init + rad_h * jax.random.normal(kh, (n,))
-    return hs
+def _apply_kick(h_prev_safe, last_dir, active_cfg, rng_key):
+    """Compute h after a NaN-recovery kick.
+
+    First NaN (last_dir is None) -> random Gaussian kick scaled by nan_jump_noise.
+    Subsequent NaN -> momentum overshoot kick = nan_jump_scale * last_dir.
+    Returns (h_new, new_rng_key).
+    """
+    if last_dir is None:
+        new_key, sub = jax.random.split(rng_key)
+        kick = active_cfg.nan_jump_noise * jax.random.normal(sub)
+        return h_prev_safe + kick, new_key
+    return h_prev_safe + active_cfg.nan_jump_scale * last_dir, rng_key
 
 
-# def generate_states(hs, star_ops, trans_ops):
-#     ## exact diagonalization version
-#     states = []
-#     for h in np.array(hs):
-#         H = hamiltonian(-1.0, h, star_ops, trans_ops)
-#         _, eigenvectors = jnp.linalg.eigh(H)
-#         ground_state = eigenvectors[:, 0]
-#         ground_state = jnp.real(ground_state)
-#         ground_state = ground_state / (jnp.linalg.norm(ground_state) + 1e-12)
-#         states.append(jnp.asarray(ground_state))
-#     X = jnp.stack(states, axis=0)
-#     return X
+def _run_inner_block(
+    h_init, ae_params, centroid,
+    j_a, star_ops, trans_ops,
+    ham_cfg, ae_cfg, active_cfg, rng_key,
+):
+    """Inner Adam loop on h.
 
+    Returns dict with:
+      h, h_history, loss_history, grad_history, event_history (per step),
+      exit_reason in {'stall', 'max_steps'}, last_dir (or None).
+    """
+    drop_p = ae_cfg.dropout_p
+    opt = optax.adam(ham_cfg.lr)
 
-def generate_states(hs, star_ops, trans_ops, ite_steps=150, ite_dt=1e-2, seed=0):
-    print(f"==== generate_states ====")
-    print(f"number of samples: {len(hs)}, ite_steps: {ite_steps}, ite_dt: {ite_dt}")
-    ## ite version
-    # Fixed ITE init-state key so this path produces the same Z2 twin as the
-    # optim path (ham_optimize.py uses jax.random.PRNGKey(0) too). Without this,
-    # bootstrap/refresh AE training would see a mixed-twin dataset that the optim
-    # cannot exploit consistently.
-    states = []
-    fixed_key = jax.random.PRNGKey(0)
-    for i, h in enumerate(np.array(hs)):
-        v, _ = ite_ground_state_from_params(-1.0, float(h), star_ops, trans_ops,
-                                            n_steps=ite_steps, dt=ite_dt, key=fixed_key)
-        states.append(v)
-    return jnp.stack(states, axis=0)
+    @jit
+    def step_fn(h, opt_state, key, lr_mult):
+        loss, grad = value_and_grad(_ae_latent_loss, argnums=0)(
+            h, j_a, star_ops, trans_ops, centroid, ae_params, drop_p, key,
+        )
+        updates, new_opt_state = opt.update(grad, opt_state)
+        h_new = h + updates * lr_mult
+        return h_new, new_opt_state, loss, grad
 
+    h = jnp.asarray(h_init, dtype=jnp.float32)
+    opt_state = opt.init(h)
 
-def active_phase_discovery(Lx, Ly, h_init,
-                           ae_cfg: AEConfig = AEConfig(),
-                           ham_cfg: HamConfig = HamConfig(),
-                           act_cfg: ActiveConfig = ActiveConfig(),
-                           init_ae_params=None, ferro_centroid=None, max_outer_iters=10):
-    key = jax.random.PRNGKey(ae_cfg.seed)
+    h_history, loss_history, grad_history, event_history = [], [], [], []
+    h_prev_safe = h
+    last_dir = None
+    boost_remaining = 0
+    consecutive_stall = 0
+    consecutive_failed_kicks = 0
+    key = rng_key
 
-    N = 2 * Lx * Ly
-    D = 2**N
+    # EMA of gradient (smooth out dropout noise in the loss).
+    # alpha = 1/stall_window so the smoothing horizon matches the stall window.
+    ema_alpha = 1.0 / max(1, ham_cfg.stall_window)
+    ema_grad = 0.0
 
-    star_ops = sum_star_operators(Lx, Ly)
-    trans_ops = transverse_field(Lx, Ly)
-
-    # Get current time string
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    # init AE if needed
-    if init_ae_params is None:
-        layers = [D, 512, ae_cfg.latent_dim, 512, D]
+    for step in range(ham_cfg.max_steps_block):
         key, sub = jax.random.split(key)
-        init_ae_params = init_ae(layers, sub)
+        lr_mult = ham_cfg.nan_lr_mult if boost_remaining > 0 else 1.0
 
-    # bootstrap centroid if not provided
-    if ferro_centroid is None:
-        key, sub = jax.random.split(key)
-        hs = sample_params(h_init, act_cfg.num_samples_when_stalled, act_cfg.sample_radius_h, sub)
-        X = generate_states(hs, star_ops, trans_ops)
-        init_ae_params = train_autoencoder(init_ae_params, X, epochs=ae_cfg.epochs, lr=ae_cfg.lr, weight_decay=ae_cfg.weight_decay, drop_p=ae_cfg.dropout_p, center_coeff=act_cfg.center_coeff, seed=ae_cfg.seed)
-        Z = fetch_latent(init_ae_params, X, jax.random.PRNGKey(0))
-        ferro_centroid = jnp.mean(Z, axis=0)
+        h_new, opt_state_new, loss, grad = step_fn(h, opt_state, sub, lr_mult)
 
-    # ham optimizer
-    ham_param = jnp.array([h_init], dtype=jnp.float32)
-    ham_opt = optax.adam(learning_rate=ham_cfg.lr)
-    ham_state = ham_opt.init(ham_param)
-    ham_step = make_ham_step(ham_opt)
+        bad = (
+            not bool(jnp.isfinite(h_new))
+            or not bool(jnp.isfinite(loss))
+            or not bool(jnp.isfinite(grad))
+        )
 
-    last_dir = jnp.zeros_like(ham_param)
-    nan_boost_steps_left = 0 # counter for nan_lr_mult steps
+        if bad:
+            consecutive_failed_kicks += 1
+            if consecutive_failed_kicks >= 3:
+                raise RuntimeError(
+                    f"Unrecoverable NaN at inner step {step}, "
+                    f"h_prev_safe={float(h_prev_safe):.6f}; "
+                    f"last 10 h-values = {h_history[-10:]}"
+                )
+            h_kicked, key = _apply_kick(h_prev_safe, last_dir, active_cfg, key)
+            h = h_kicked
+            opt_state = opt.init(h)
+            boost_remaining = ham_cfg.nan_lr_steps
 
-    history = { 'ham_params': [], 'ham_loss': [] }
+            h_history.append(float(h))
+            loss_history.append(float('nan'))
+            grad_history.append(float('nan'))
+            event_history.append('nan_kick')
+            continue
 
-    for outer in range(max_outer_iters):
+        consecutive_failed_kicks = 0
+        step_dir = h_new - h
 
-        print(f'===== Outer Iteration {outer+1} / {max_outer_iters} =====')
+        h = h_new
+        opt_state = opt_state_new
+        h_prev_safe = h
+        last_dir = float(step_dir)
+        boost_remaining = max(0, boost_remaining - 1)
 
-        recent_losses, recent_grads = [], []
-        for step in range(ham_cfg.max_steps_block):
-            ham_param_prev = jnp.array(ham_param)
-            ham_param, ham_state, L, gnorm = ham_step(ham_param, star_ops, trans_ops, init_ae_params, ferro_centroid, ham_state)
+        # Stall detection on the EMA-smoothed gradient. The instantaneous grad
+        # is inflated by dropout noise inside fetch_latent (~1e-2 even when h
+        # has converged); EMA over the stall window removes the noise and
+        # approaches the true mean gradient direction (~0 at a local minimum).
+        ema_grad = (1.0 - ema_alpha) * ema_grad + ema_alpha * float(grad)
+        if step >= ham_cfg.stall_window and abs(ema_grad) < ham_cfg.stall_tol_grad:
+            consecutive_stall += 1
+        else:
+            consecutive_stall = 0
 
-            # Compute absolute change in each parameter
-            h_change     = float(abs(ham_param[0] - ham_param_prev[0]))
-            max_change   = h_change
+        h_history.append(float(h))
+        loss_history.append(float(loss))
+        grad_history.append(float(grad))
+        event_history.append('normal')
 
-            # Logging
-            if (step + 1) % 100 == 0 or step == 0:
-                print(f"[HAM] step {step+1:4d} | loss={float(L):.3e} | grad={float(gnorm):.2e} | "
-                      f"h={float(ham_param[0]):.5f} | h_change={h_change:.2e}")
-                
-            # NaN/Inf guard -> break
-            # bad = (~jnp.isfinite(L)) | (~jnp.isfinite(gnorm))
-            # bad = bad.item()
-            # if bad:
-                # print("[WARNING] Encountered NaN/Inf in loss or gradient. Stopping inner optimization.")
-                # ham_param = ham_param_prev  # revert to previous safe parameters
-                # break
+        if consecutive_stall >= ham_cfg.stall_window:
+            return {
+                'h': float(h),
+                'h_history': h_history,
+                'loss_history': loss_history,
+                'grad_history': grad_history,
+                'event_history': event_history,
+                'exit_reason': 'stall',
+                'last_dir': last_dir,
+            }
 
-            all_finite = (
-            jnp.all(jnp.isfinite(ham_param))
-            & jnp.isfinite(L)
-            & jnp.isfinite(gnorm)
-            ).item()
+    return {
+        'h': float(h),
+        'h_history': h_history,
+        'loss_history': loss_history,
+        'grad_history': grad_history,
+        'event_history': event_history,
+        'exit_reason': 'max_steps',
+        'last_dir': last_dir,
+    }
 
-            if not all_finite:
-                if act_cfg.enable_nan_revert_jump:
-                    print("[WARNING] NaN/Inf in params/loss/grad. Reverting and jumping past the region.")
 
-                    # 1) revert
-                    ham_param = ham_param_prev
+def run_active_phase_discovery(
+    h_init,
+    j_a, star_ops, trans_ops,
+    ham_cfg, ae_cfg, active_cfg, rng_key,
+    checkpoint_path=None,
+):
+    """Top-level driver. Returns the run-result bundle (see module docstring).
 
-                    # 2) compute jump
-                    if jnp.all(last_dir == 0).item():
-                        # first step or no history: small random nudge
-                        key, sub = jax.random.split(key)
-                        jump = act_cfg.nan_jump_noise * jax.random.normal(sub, shape=ham_param.shape)
-                    else:
-                        jump = act_cfg.nan_jump_scale * last_dir
+    If `checkpoint_path` is given, the running bundle is pickled to that path
+    (overwrite) after each outer iteration's retrain. Useful for crash safety
+    on long runs: the last completed outer iteration is always recoverable.
+    """
+    rng_key, boot_key = jax.random.split(rng_key)
 
-                    ham_param = ham_param + jump
+    # 1. INITIAL BOOTSTRAP
+    print(
+        f'[active] initial bootstrap at h={h_init:.4f}, '
+        f'radius={active_cfg.bootstrap_radius_init}, '
+        f'num_samples={active_cfg.num_samples_init}'
+    )
+    bootstrap = bootstrap_ae(
+        h_center=h_init,
+        radius=active_cfg.bootstrap_radius_init,
+        num_samples=active_cfg.num_samples_init,
+        j_a=j_a, star_ops=star_ops, trans_ops=trans_ops,
+        ae_cfg=ae_cfg,
+        rng_key=boot_key,
+    )
+    bootstrap_history = [float(h_init)]
+    current_ae_params = bootstrap['ae_params']
+    current_centroid = bootstrap['centroid']
+    last_x_train_all = bootstrap['x_train']
+    last_h_samples_all = bootstrap['h_samples']
+    current_h = float(h_init)
 
-                    # 3) temporary LR boost (only if enabled)
-                    if ham_cfg.nan_boost_lr:
-                        nan_boost_steps_left = ham_cfg.nan_lr_steps
-                        ham_opt_boost = optax.adam(learning_rate=ham_cfg.lr * ham_cfg.nan_lr_mult)
-                        ham_state = ham_opt_boost.init(ham_param)
-                        ham_step  = make_ham_step(ham_opt_boost)
-                    else:
-                        # Keep normal optimizer, just reset state with new parameters
-                        ham_state = ham_opt.init(ham_param)
+    # Run-level history (one entry per Adam step + synthetic 'retrain' markers)
+    h_per_step, loss_per_step, grad_per_step, event_per_step = [], [], [], []
 
-                    # skip recording this failed step; continue to next iteration
-                    continue
-                else:
-                    # skip recording this failed step; continue to next iteration
-                    continue
+    cfg_snapshot = {
+        'h_init': float(h_init),
+        'j_a': float(j_a),
+        'ham_cfg': asdict(ham_cfg),
+        'ae_cfg': asdict(ae_cfg),
+        'active_cfg': asdict(active_cfg),
+    }
 
-                
-            # Stop condition if parameter changes are tiny
-            if max_change < ham_cfg.param_tol_change:
-                print(f"[CONVERGED] h={float(ham_param[0]):.5f} changed by < {ham_cfg.param_tol_change:.1e}, stopping inner optimization.")
-                break
+    def _pack():
+        """Build the current results bundle (used for checkpoint + final return)."""
+        return {
+            'history': {
+                'h_per_step': h_per_step,
+                'loss_per_step': loss_per_step,
+                'grad_per_step': grad_per_step,
+                'event_per_step': event_per_step,
+            },
+            'bootstrap_history': bootstrap_history,
+            'final_h': current_h,
+            'final_ae_params': current_ae_params,
+            'final_centroid': current_centroid,
+            'final_x_train_all': last_x_train_all,
+            'final_h_samples_all': last_h_samples_all,
+            'cfg_snapshot': cfg_snapshot,
+        }
 
-            # record history
-            history['ham_params'].append(np.array(ham_param))
-            history['ham_loss'].append(float(L))
-            last_dir = ham_param - ham_param_prev
+    # 2. OUTER LOOP
+    for outer_iter in range(active_cfg.max_outer_iters + 1):
+        rng_key, inner_key = jax.random.split(rng_key)
+        print(f'[active] outer_iter={outer_iter} inner block starting at h={current_h:.4f}')
+        inner = _run_inner_block(
+            current_h, current_ae_params, current_centroid,
+            j_a, star_ops, trans_ops,
+            ham_cfg, ae_cfg, active_cfg, inner_key,
+        )
+        print(
+            f'[active]   inner exit: reason={inner["exit_reason"]}, '
+            f'steps={len(inner["h_history"])}, h_end={inner["h"]:.4f}'
+        )
+        h_per_step.extend(inner['h_history'])
+        loss_per_step.extend(inner['loss_history'])
+        grad_per_step.extend(inner['grad_history'])
+        event_per_step.extend(inner['event_history'])
+        current_h = inner['h']
 
-            # recent_losses.append(float(L))
-            # recent_grads.append(float(gnorm))
-            
-            # if len(recent_losses) >= ham_cfg.stall_window:
-            #     dL = abs(recent_losses[-1] - recent_losses[-ham_cfg.stall_window])
-            #     gbar = np.mean(recent_grads[-ham_cfg.stall_window:])
-            #     if dL < ham_cfg.stall_tol_loss or gbar < ham_cfg.stall_tol_grad:
-            #         break
+        if outer_iter == active_cfg.max_outer_iters:
+            break
 
-            # ---- manage LR boost window ----
-            if nan_boost_steps_left > 0:
-                nan_boost_steps_left -= 1
-                if nan_boost_steps_left == 0:
-                    # restore normal optimizer
-                    ham_opt  = optax.adam(learning_rate=ham_cfg.lr)
-                    ham_state = ham_opt.init(ham_param)
-                    ham_step  = make_ham_step(ham_opt)
+        # Retrain only when the inner block actually stalled. If it exited via
+        # 'max_steps' the optimizer was still moving; the next inner block
+        # picks up at current_h with the same AE.
+        if inner['exit_reason'] != 'stall':
+            print(f'[active]   exit_reason={inner["exit_reason"]} -> skip retrain')
+            continue
 
-        if step < ham_cfg.max_steps_block - 1:
-            # retrain AE locally
-            h = float(ham_param[0])
-            key, sub = jax.random.split(key)
-            hs = sample_params(h, act_cfg.num_samples_when_stalled, act_cfg.sample_radius_h, sub)
-            X_local = generate_states(hs, star_ops, trans_ops)
-            init_ae_params = train_autoencoder(init_ae_params, X_local, epochs=ae_cfg.mini_epochs, lr=ae_cfg.lr, weight_decay=ae_cfg.weight_decay, drop_p=ae_cfg.dropout_p, center_coeff=act_cfg.center_coeff, seed=ae_cfg.seed)
-            Z_local = fetch_latent(init_ae_params, X_local, jax.random.PRNGKey(0))
-            ferro_centroid = jnp.mean(Z_local, axis=0)
+        bootstrap_history.append(current_h)
+        rng_key, retrain_key = jax.random.split(rng_key)
+        print(
+            f'[active]   retrain with {len(bootstrap_history)} centers: '
+            f'{[f"{c:.3f}" for c in bootstrap_history]}'
+        )
+        retrain = retrain_with_history(
+            bootstrap_history=bootstrap_history,
+            radius=active_cfg.bootstrap_radius_retrain,
+            num_samples_per_circle=active_cfg.num_samples_bootstrap,
+            j_a=j_a, star_ops=star_ops, trans_ops=trans_ops,
+            ae_cfg=ae_cfg,
+            rng_key=retrain_key,
+        )
+        current_ae_params = retrain['ae_params']
+        current_centroid = retrain['centroid']
+        last_x_train_all = retrain['x_train_all']
+        last_h_samples_all = retrain['h_samples_all']
 
-    # save hamiltonian parameters history
-    print('Saving Hamiltonian parameters history...')
-    save_pickle(history, f'../models/active_phase_ham_params_history_h{h_init}_{Lx}x{Ly}_{timestamp}.pkl')
+        # Synthetic 'retrain' marker keeps per-step lists aligned
+        h_per_step.append(current_h)
+        loss_per_step.append(float('nan'))
+        grad_per_step.append(float('nan'))
+        event_per_step.append('retrain')
 
-    # drawing
-    print('Drawing Hamiltonian parameter trajectory...')
-    hs = [float(p[0]) for p in history['ham_params']]  # Extract h values (single parameter)
-    steps = np.arange(len(hs))  # Step numbers for x-axis
-    
-    fig, ax = plt.subplots()
-    ax.plot(steps, hs, 'o-', color='blue', markersize=2, lw=1)
+        if checkpoint_path is not None:
+            save_pickle(_pack(), checkpoint_path)
+            print(f'[active]   checkpoint -> {checkpoint_path}')
 
-    ax.set_xlabel("Epoch step", fontsize=14)
-    ax.set_ylabel(r"$h$", fontsize=14)
-    if len(hs) > 0:
-        h_min, h_max = min(hs), max(hs)
-        h_range = h_max - h_min
-        padding = 0.1 * h_range if h_range > 0 else 0.1
-        ax.set_ylim(h_min - padding, h_max + padding)
-    ax.set_title("Hamiltonian Parameter Trajectory", fontsize=15)
-    ax.grid(True)
-    plt.tight_layout()
-    plt.savefig(f'../figures/active_phase_trajectory_h{h_init}_{Lx}x{Ly}_{timestamp}.pdf', bbox_inches='tight')
-
-    return init_ae_params, ferro_centroid, history
+    return _pack()
