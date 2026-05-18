@@ -35,11 +35,11 @@ class HamConfig:
     J: float = -1.0                   # star-operator coupling (j_a)
     h_init: float = -0.4              # initial transverse field
     seed: int = 83948                 # RNG for kick noise + bootstrap sampling
-    lr: float = 5e-4                  # h-optim Adam lr
+    lr: float = 5e-3                  # h-optim Adam lr
     max_steps_block: int = 1000       # max inner Adam steps per outer block
     stall_window: int = 25            # consecutive low-progress steps to declare stall
     stall_tol_loss: float = 1e-4
-    stall_tol_grad: float = 1e-4      # threshold on |EMA(grad)| magnitude for stall detection
+    stall_tol_grad: float = 5e-3      # threshold on |EMA(grad)| magnitude for stall detection
     param_tol_change: float = 1e-4    # vestigial (EMA-grad stall is used instead)
     nan_lr_mult: float = 10.0         # temporary lr multiplier on NaN recovery
     nan_lr_steps: int = 5             # how many steps to keep boosted lr
