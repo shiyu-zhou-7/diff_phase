@@ -10,13 +10,15 @@ Usage:
     H_INIT=-0.1 EPOCHS=200 INIT_N=20 BOOTSTRAP_N=15 MAX_OUTER=1 python main_active_phase.py   # smoke
 
 Env-var overrides:
-    H_INIT       ham_cfg.h_init                       (default: HamConfig().h_init)
-    SEED         ham_cfg.seed                         (default: HamConfig().seed)
-    LX, LY       ham_cfg.Lx, ham_cfg.Ly               (default: 2, 3)
-    EPOCHS       ae_cfg.epochs                        (default: AEConfig().epochs)
-    MAX_OUTER    active_cfg.max_outer_iters           (default: 5)
-    INIT_N       active_cfg.num_samples_init          (default: 200)
-    BOOTSTRAP_N  active_cfg.num_samples_bootstrap     (default: 100)
+    H_INIT          ham_cfg.h_init                          (default: HamConfig().h_init)
+    SEED            ham_cfg.seed                            (default: HamConfig().seed)
+    LX, LY          ham_cfg.Lx, ham_cfg.Ly                  (default: 2, 3)
+    EPOCHS          ae_cfg.epochs                           (default: AEConfig().epochs)
+    MAX_OUTER       active_cfg.max_outer_iters              (default: 5)
+    INIT_N          active_cfg.num_samples_init             (default: 500)
+    BOOTSTRAP_N     active_cfg.num_samples_bootstrap        (default: 250)
+    RADIUS_INIT     active_cfg.bootstrap_radius_init        (default: 0.05)
+    RADIUS_RETRAIN  active_cfg.bootstrap_radius_retrain     (default: 0.05)
 
 Outputs (timestamped, all in ../data/):
     active_phase_h{h_tag}_<ts>.pkl       # final bundle
@@ -79,6 +81,10 @@ if 'INIT_N' in os.environ:
     active_cfg = replace(active_cfg, num_samples_init=int(os.environ['INIT_N']))
 if 'BOOTSTRAP_N' in os.environ:
     active_cfg = replace(active_cfg, num_samples_bootstrap=int(os.environ['BOOTSTRAP_N']))
+if 'RADIUS_INIT' in os.environ:
+    active_cfg = replace(active_cfg, bootstrap_radius_init=float(os.environ['RADIUS_INIT']))
+if 'RADIUS_RETRAIN' in os.environ:
+    active_cfg = replace(active_cfg, bootstrap_radius_retrain=float(os.environ['RADIUS_RETRAIN']))
 
 # ── paths ─────────────────────────────────────────────────────────────────────
 ts = timestamp()
