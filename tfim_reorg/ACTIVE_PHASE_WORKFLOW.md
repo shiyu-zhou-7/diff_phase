@@ -372,19 +372,58 @@ Then:
   - Start and end squares color-matched to the trajectory endpoints.
   - Solid-triangle direction arrows every `ARROW_STRIDE` kept points
     (default 5; ~8 arrows per trajectory).
-  - Horizontal step colorbar at the bottom.
+  - Horizontal step colorbar at the bottom labeled "step (0 → final)".
+  - Boxed text annotation in the lower-right showing `g_0` and `g_final`
+    for that trajectory.
+
+**CLI per-bundle step truncation:** each positional bundle argument can take a
+`:N` suffix, e.g. `path/to/bundle.pkl:300`, to truncate that trajectory to its
+first N entries (counts include synthetic 'retrain' markers, matching the step
+indexing used by `plot_active_phase_trajectory.py`). Without `:N` the full
+trajectory is used. The truncation is encoded into the output filename as
+`first{N}` so truncated vs full plots don't collide.
+
+**Output filename disambiguation:** to keep figures from two different runs at
+the same `h_init` (e.g., the same `g_0 = -1.5` with different seeds or dates)
+from overwriting each other, the source bundle's own timestamp is embedded in
+the output filename — `phase_latent_data_pc12_scatter_h{h_tag}_{bundle_ts}[_first{N}]_ep{N}_{ts}.pdf`.
 
 Env vars: `EPOCHS` (override AE training epochs), `REUSE_AE=<path>` (skip
 training; load a previously saved `phase_latent_data_ae_ep{N}_<ts>.pkl`),
 `ARROW_STRIDE` (arrow density).
 
 Outputs: `phase_latent_data_pc_histograms_ep{N}_<ts>.pdf`,
-`phase_latent_data_pc12_scatter_h{tag}_ep{N}_<ts>.pdf` (one per bundle),
-plus a reusable artifact `data/phase_latent_data_ae_ep{N}_<ts>.pkl`.
+`phase_latent_data_pc12_scatter_h{tag}[_first{N}]_ep{N}_<ts>.pdf` (one per
+bundle), plus a reusable artifact `data/phase_latent_data_ae_ep{N}_<ts>.pkl`.
 
 Useful for visualizing where a single active-phase trajectory sits relative to
 a phase-comprehensive latent space (the AE in the active-phase pipeline only
 ever saw the local bootstrap circles, so it can't be used as that reference).
+
+### `plot_combined_active_phase_trajectory.py` — multi-run h vs (normalized) step
+
+Combined h-trajectory figure overlaying multiple active-phase runs on a shared
+x-axis normalized to `[0, 1]` (so all runs end at the right edge of the plot
+regardless of their actual step count). Configured by a hardcoded `RUNS` list
+at the top of the script — each entry is `{path, max_steps, color, label}`.
+Set `max_steps=None` to use the full trajectory; set an integer to truncate.
+
+Each trajectory:
+- Per-step dot scatter (no connecting line) in the run color.
+- A filled square in the run color marks the start at `(x=0, h=h_init)`.
+- A filled triangle in the run color marks the end at `(x=1, last plotted h)`.
+- Retrain markers (synthetic `'retrain'` events) are drawn as black-edged stars
+  in the run color.
+
+Common annotations: dashed phase boundary at `g = -1`, mediumorchid SSB / PARA
+labels at the right edge with their left edges aligned. Legend at lower-left
+with 3 columns (tight `columnspacing` / `handletextpad`).
+
+Output: `figures/combined_active_phase_trajectory_<ts>.pdf`.
+
+Pairs naturally with `analyze_phase_latent_from_data.py`'s `:N` step
+truncation: feed the same `(path, max_steps)` pairs to both scripts so the
+h-space and PC-space figures show exactly the same step ranges for each run.
 
 ---
 
