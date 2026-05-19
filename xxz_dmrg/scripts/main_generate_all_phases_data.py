@@ -36,7 +36,7 @@ PREV_PICKLE    = '../models/active_phase_discovery_checkpoint_latest.pkl'
 RUN_PICKLE     = '../models/active_phase_resume_history_run_20260505_235151.pkl'
 REAL_START     = np.array([[-1.5, -0.3]])  # (Δ, h)
 PER_REGION     = 10 if DRY_RUN else 250
-TRAJ_DECIMATE  = 50 if DRY_RUN else 1
+TRAJ_DECIMATE  = int(os.environ.get('TRAJ_DECIMATE', '50' if DRY_RUN else '1'))
 
 # (label, delta_range, h_range_or_None)  -- None ⇒ h fixed at 0
 PHASE_REGIONS = [
@@ -105,11 +105,16 @@ if MODE != 'train_only':
     run  = load_pickle(RUN_PICKLE)
     run_params  = np.array(run['hist']['ham_params'])
 
-    traj_params = np.vstack([REAL_START, prev_params, run_params])
-    traj_params = traj_params[::TRAJ_DECIMATE]
+    traj_full = np.vstack([REAL_START, prev_params, run_params])
+    n_full = len(traj_full)
+    idx = list(range(0, n_full, TRAJ_DECIMATE))
+    if idx[-1] != n_full - 1:
+        idx.append(n_full - 1)
+    traj_params = traj_full[idx]
     print(f"\nTrajectory: {traj_params.shape}  "
           f"(prev={len(prev_params)}, run={len(run_params)}, "
-          f"+1 real-start, decim={TRAJ_DECIMATE})")
+          f"+1 real-start, decim={TRAJ_DECIMATE}, "
+          f"first={traj_params[0].tolist()}, last={traj_params[-1].tolist()})")
 
     # ── Run DMRG over trajectory ──────────────────────────────────────────
     print(f"\n===== DMRG over trajectory ({len(traj_params)} pts) =====")
