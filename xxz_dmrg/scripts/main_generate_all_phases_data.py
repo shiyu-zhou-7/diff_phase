@@ -27,6 +27,8 @@ from utils.io import save_pickle, load_pickle
 
 
 DRY_RUN = bool(int(os.environ.get('DRY_RUN', '0')))
+MODE    = os.environ.get('MODE', 'all')   # 'all', 'train_only', 'traj_only'
+assert MODE in ('all', 'train_only', 'traj_only'), f"Invalid MODE={MODE!r}"
 
 L              = 20
 SEED           = 42
@@ -48,6 +50,7 @@ PHASE_REGIONS = [
 
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 print(f"Timestamp:        {timestamp}")
+print(f"MODE:             {MODE}")
 print(f"DRY_RUN:          {DRY_RUN}")
 print(f"Per-region count: {PER_REGION}")
 print(f"Trajectory decim: {TRAJ_DECIMATE}")
@@ -67,52 +70,57 @@ dmrg_cfg = DMRGConfig()
 
 rng = np.random.default_rng(SEED)
 
-# ── Sample + run DMRG over training set ──────────────────────────────────
-train_params_chunks = []
-train_obs_chunks    = []
-train_phase_chunks  = []
+train_params = train_obs = train_phase = None
+if MODE != 'traj_only':
+    # ── Sample + run DMRG over training set ────────────────────────────────
+    train_params_chunks = []
+    train_obs_chunks    = []
+    train_phase_chunks  = []
 
-for label, d_range, h_range in PHASE_REGIONS:
-    print(f"\n===== Region '{label}' "
-          f"(Δ∈{d_range}, h={'0 (fixed)' if h_range is None else h_range}) =====")
-    deltas = rng.uniform(d_range[0], d_range[1], size=PER_REGION)
-    if h_range is None:
-        hs = np.zeros(PER_REGION)
-    else:
-        hs = rng.uniform(h_range[0], h_range[1], size=PER_REGION)
+    for label, d_range, h_range in PHASE_REGIONS:
+        print(f"\n===== Region '{label}' "
+              f"(Δ∈{d_range}, h={'0 (fixed)' if h_range is None else h_range}) =====")
+        deltas = rng.uniform(d_range[0], d_range[1], size=PER_REGION)
+        if h_range is None:
+            hs = np.zeros(PER_REGION)
+        else:
+            hs = rng.uniform(h_range[0], h_range[1], size=PER_REGION)
 
-    X = np.asarray(generate_data_xxzh(L, deltas, hs, observables_list, dmrg_cfg))
+        X = np.asarray(generate_data_xxzh(L, deltas, hs, observables_list, dmrg_cfg))
 
-    train_params_chunks.append(np.stack([deltas, hs], axis=1))
-    train_obs_chunks.append(X)
-    train_phase_chunks.extend([label] * PER_REGION)
+        train_params_chunks.append(np.stack([deltas, hs], axis=1))
+        train_obs_chunks.append(X)
+        train_phase_chunks.extend([label] * PER_REGION)
 
-train_params = np.concatenate(train_params_chunks, axis=0)
-train_obs    = np.concatenate(train_obs_chunks,    axis=0)
-train_phase  = np.array(train_phase_chunks)
-print(f"\nTraining set: params={train_params.shape}, obs={train_obs.shape}")
+    train_params = np.concatenate(train_params_chunks, axis=0)
+    train_obs    = np.concatenate(train_obs_chunks,    axis=0)
+    train_phase  = np.array(train_phase_chunks)
+    print(f"\nTraining set: params={train_params.shape}, obs={train_obs.shape}")
 
-# ── Build trajectory (real start + prev + run) ───────────────────────────
-prev = load_pickle(PREV_PICKLE)
-prev_params = np.array(prev['hist']['ham_params'])
-run  = load_pickle(RUN_PICKLE)
-run_params  = np.array(run['hist']['ham_params'])
+traj_params = traj_obs = None
+if MODE != 'train_only':
+    # ── Build trajectory (real start + prev + run) ────────────────────────
+    prev = load_pickle(PREV_PICKLE)
+    prev_params = np.array(prev['hist']['ham_params'])
+    run  = load_pickle(RUN_PICKLE)
+    run_params  = np.array(run['hist']['ham_params'])
 
-traj_params = np.vstack([REAL_START, prev_params, run_params])
-traj_params = traj_params[::TRAJ_DECIMATE]
-print(f"\nTrajectory: {traj_params.shape}  "
-      f"(prev={len(prev_params)}, run={len(run_params)}, "
-      f"+1 real-start, decim={TRAJ_DECIMATE})")
+    traj_params = np.vstack([REAL_START, prev_params, run_params])
+    traj_params = traj_params[::TRAJ_DECIMATE]
+    print(f"\nTrajectory: {traj_params.shape}  "
+          f"(prev={len(prev_params)}, run={len(run_params)}, "
+          f"+1 real-start, decim={TRAJ_DECIMATE})")
 
-# ── Run DMRG over trajectory ─────────────────────────────────────────────
-print(f"\n===== DMRG over trajectory ({len(traj_params)} pts) =====")
-traj_obs = np.asarray(generate_data_xxzh(
-    L, traj_params[:, 0], traj_params[:, 1], observables_list, dmrg_cfg
-))
-print(f"Trajectory obs: {traj_obs.shape}")
+    # ── Run DMRG over trajectory ──────────────────────────────────────────
+    print(f"\n===== DMRG over trajectory ({len(traj_params)} pts) =====")
+    traj_obs = np.asarray(generate_data_xxzh(
+        L, traj_params[:, 0], traj_params[:, 1], observables_list, dmrg_cfg
+    ))
+    print(f"Trajectory obs: {traj_obs.shape}")
 
 # ── Save ─────────────────────────────────────────────────────────────────
-out_path = f'../data/all_phases_latent_data_{timestamp}.pkl'
+mode_suffix = '' if MODE == 'all' else f'_{MODE}'
+out_path = f'../data/all_phases_latent_data{mode_suffix}_{timestamp}.pkl'
 save_pickle({
     'train_params':   train_params,
     'train_obs':      train_obs,
@@ -122,6 +130,7 @@ save_pickle({
     'L':              L,
     'seed':           SEED,
     'dry_run':        DRY_RUN,
+    'mode':           MODE,
     'phase_regions':  PHASE_REGIONS,
     'prev_pickle':    PREV_PICKLE,
     'run_pickle':     RUN_PICKLE,
