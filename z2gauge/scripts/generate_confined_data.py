@@ -11,7 +11,7 @@ config.update("jax_enable_x64", True)
 import sys
 sys.path.append('.')
 from hamiltonian.z2ham import sum_star_operators, transverse_field, hamiltonian
-from hamiltonian.ite import ite_ground_state_from_params
+from hamiltonian.ite import ite_ground_state_from_params, ite_ground_state_batched
 
 
 def generate_confined_phase_data(
@@ -55,33 +55,60 @@ def generate_confined_phase_data(
     data = []
     h_values = np.linspace(h_range[0], h_range[1], n_samples)
 
-    print("\nGenerating ground states...")
-    # Use a FIXED ITE init-state key per sample so the same H(h) always converges
-    # to the same Z2 twin. This matches the optim path (ham_optimize.py also uses
-    # jax.random.PRNGKey(0)), so training latents and optim-time latents share the
-    # same twin-selection convention.
+    # FIXED ITE init-state key so the same H(h) always converges to the same Z2
+    # twin — matches optim_h.py:_TWIN_KEY = PRNGKey(0), so training and
+    # optim-time latents share a single twin-selection convention.
     fixed_key = jax.random.PRNGKey(0)
-    for i, h in enumerate(tqdm(h_values)):
-        ground_state, ground_energy = ite_ground_state_from_params(
-            j_a_fixed,
-            float(h),                # NO sign flip — H(j_a, h) matches optim's hamiltonian(j_a, h)
-            star_ops,
-            trans_ops,
-            n_steps=ite_steps,
-            dt=ite_dt,
-            key=fixed_key,
-        )
 
-        # Store data
+    # Batched ITE path: one JAX dispatch for all n_samples (~28× faster than the
+    # per-sample loop at D=4096, n_samples=1000). The batched function broadcasts
+    # one v_0 (drawn from `fixed_key`) to every sample, preserving the pinned-twin
+    # convention exactly.
+    print(f"\nGenerating ground states (batched ITE: 1 call for {n_samples} samples)...")
+    # Cast operators to float32 to match the per-sample function's internal precision.
+    S32 = star_ops.astype(jnp.float32)
+    T32 = trans_ops.astype(jnp.float32)
+    h_batch = jnp.asarray(h_values, dtype=jnp.float32)
+    V, E_final = ite_ground_state_batched(
+        j_a_fixed, h_batch,
+        S32, T32,
+        n_steps=ite_steps, dt=ite_dt,
+        key=fixed_key,
+    )
+    V.block_until_ready()
+
+    for i, h in enumerate(h_values):
         data.append({
-            'v': ground_state,  # Ground state wavefunction
-            'E': ground_energy,  # Ground state energy
-            'j_a': j_a_fixed,    # Star operator coupling
-            'h': h,              # Transverse field strength
+            'v': np.asarray(V[i]),     # Ground state wavefunction (numpy for pickle portability)
+            'E': float(E_final[i]),    # Ground state energy
+            'j_a': j_a_fixed,          # Star operator coupling
+            'h': h,                    # Transverse field strength
             'Lx': Lx,
             'Ly': Ly,
             'phase': 'confined'
         })
+
+    # --- Legacy single-sample loop (kept commented for easy revert) ---------
+    # for i, h in enumerate(tqdm(h_values)):
+    #     ground_state, ground_energy = ite_ground_state_from_params(
+    #         j_a_fixed,
+    #         float(h),                # NO sign flip — H(j_a, h) matches optim's hamiltonian(j_a, h)
+    #         star_ops,
+    #         trans_ops,
+    #         n_steps=ite_steps,
+    #         dt=ite_dt,
+    #         key=fixed_key,
+    #     )
+    #     data.append({
+    #         'v': ground_state,
+    #         'E': ground_energy,
+    #         'j_a': j_a_fixed,
+    #         'h': h,
+    #         'Lx': Lx,
+    #         'Ly': Ly,
+    #         'phase': 'confined',
+    #     })
+    # ------------------------------------------------------------------------
 
     return data
 
@@ -129,30 +156,53 @@ def generate_deconfined_phase_data(
     data = []
     h_values = np.linspace(h_range[0], h_range[1], n_samples)
 
-    print("\nGenerating ground states...")
-    # Same fixed-key + no-sign-flip convention as generate_confined_phase_data
-    # — keeps the twin choice consistent with the optim path.
+    # Same fixed-key + no-sign-flip convention as generate_confined_phase_data.
     fixed_key = jax.random.PRNGKey(0)
-    for i, h in enumerate(tqdm(h_values)):
-        ground_state, ground_energy = ite_ground_state_from_params(
-            j_a_fixed,
-            float(h),
-            star_ops,
-            trans_ops,
-            n_steps=ite_steps,
-            dt=ite_dt,
-            key=fixed_key,
-        )
 
+    print(f"\nGenerating ground states (batched ITE: 1 call for {n_samples} samples)...")
+    S32 = star_ops.astype(jnp.float32)
+    T32 = trans_ops.astype(jnp.float32)
+    h_batch = jnp.asarray(h_values, dtype=jnp.float32)
+    V, E_final = ite_ground_state_batched(
+        j_a_fixed, h_batch,
+        S32, T32,
+        n_steps=ite_steps, dt=ite_dt,
+        key=fixed_key,
+    )
+    V.block_until_ready()
+
+    for i, h in enumerate(h_values):
         data.append({
-            'v': ground_state,
-            'E': ground_energy,
+            'v': np.asarray(V[i]),
+            'E': float(E_final[i]),
             'j_a': j_a_fixed,
             'h': h,
             'Lx': Lx,
             'Ly': Ly,
             'phase': 'deconfined'
         })
+
+    # --- Legacy single-sample loop (kept commented for easy revert) ---------
+    # for i, h in enumerate(tqdm(h_values)):
+    #     ground_state, ground_energy = ite_ground_state_from_params(
+    #         j_a_fixed,
+    #         float(h),
+    #         star_ops,
+    #         trans_ops,
+    #         n_steps=ite_steps,
+    #         dt=ite_dt,
+    #         key=fixed_key,
+    #     )
+    #     data.append({
+    #         'v': ground_state,
+    #         'E': ground_energy,
+    #         'j_a': j_a_fixed,
+    #         'h': h,
+    #         'Lx': Lx,
+    #         'Ly': Ly,
+    #         'phase': 'deconfined',
+    #     })
+    # ------------------------------------------------------------------------
 
     return data
 
