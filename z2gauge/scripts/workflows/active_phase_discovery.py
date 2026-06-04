@@ -34,6 +34,13 @@ from training.optim_h import _ae_latent_loss
 from utils.io import save_pickle
 
 
+# Salt for deriving the per-run ITE twin key off ham_cfg.seed. Folding in a
+# fixed salt gives the twin its own substream so twin selection is reproducible
+# from the run seed yet uncorrelated with the h-sampling / AE-init streams
+# (which start from the same PRNGKey(seed)).
+_TWIN_SALT = 0xC0FFEE
+
+
 def _apply_kick(h_prev_safe, last_dir, active_cfg, rng_key):
     """Compute h after a NaN-recovery kick.
 
@@ -52,6 +59,7 @@ def _run_inner_block(
     h_init, ae_params, centroid,
     j_a, star_ops, trans_ops,
     ham_cfg, ae_cfg, active_cfg, rng_key,
+    twin_key,
 ):
     """Inner Adam loop on h.
 
@@ -66,6 +74,7 @@ def _run_inner_block(
     def step_fn(h, opt_state, key, lr_mult):
         loss, grad = value_and_grad(_ae_latent_loss, argnums=0)(
             h, j_a, star_ops, trans_ops, centroid, ae_params, drop_p, key,
+            twin_key,
         )
         updates, new_opt_state = opt.update(grad, opt_state)
         h_new = h + updates * lr_mult
@@ -178,6 +187,12 @@ def run_active_phase_discovery(
     """
     rng_key, boot_key = jax.random.split(rng_key)
 
+    # One ITE twin per run, derived from the run seed (constant within the run
+    # so the autodiff path stays consistent). Shared by the bootstrap data-gen
+    # and the optim loss so both live on the same twin branch.
+    twin_key = jax.random.fold_in(jax.random.PRNGKey(ham_cfg.seed), _TWIN_SALT)
+    print(f'[active] twin_key derived from seed={ham_cfg.seed} (salt={_TWIN_SALT:#x})')
+
     # 1. INITIAL BOOTSTRAP
     print(
         f'[active] initial bootstrap at h={h_init:.4f}, '
@@ -191,6 +206,7 @@ def run_active_phase_discovery(
         j_a=j_a, star_ops=star_ops, trans_ops=trans_ops,
         ae_cfg=ae_cfg,
         rng_key=boot_key,
+        twin_key=twin_key,
     )
     bootstrap_history = [float(h_init)]
     current_ae_params = bootstrap['ae_params']
@@ -236,6 +252,7 @@ def run_active_phase_discovery(
             current_h, current_ae_params, current_centroid,
             j_a, star_ops, trans_ops,
             ham_cfg, ae_cfg, active_cfg, inner_key,
+            twin_key,
         )
         print(
             f'[active]   inner exit: reason={inner["exit_reason"]}, '
@@ -270,6 +287,7 @@ def run_active_phase_discovery(
             j_a=j_a, star_ops=star_ops, trans_ops=trans_ops,
             ae_cfg=ae_cfg,
             rng_key=retrain_key,
+            twin_key=twin_key,
         )
         current_ae_params = retrain['ae_params']
         current_centroid = retrain['centroid']

@@ -15,10 +15,12 @@ Three pure functions, no disk I/O:
       History-aware retrain: re-samples one circle per historical center,
       concatenates them, then trains a fresh AE from scratch.
 
-Twin-selection convention: ITE is initialized from a FIXED PRNGKey(0) so
-the same H(h) always converges to the same Z2 twin in the degenerate ground
-subspace. This matches both the data-gen path (generate_confined_data.py)
-and the optim path (training/optim_h.py).
+Twin-selection convention: the ITE init-state key (`twin_key`) selects which
+Z2 twin H(h) converges to in the degenerate ground subspace. It is passed in
+so the active-phase driver can derive one twin per run from the run seed
+(active_phase_discovery.run_active_phase_discovery). The default
+`_TWIN_KEY = PRNGKey(0)` preserves the old pinned-twin behavior and keeps the
+bootstrap data path consistent with the optim path (training/optim_h.py).
 """
 import jax
 import jax.numpy as jnp
@@ -37,6 +39,7 @@ def sample_circle(
     j_a, star_ops, trans_ops,
     rng_key,
     ite_n_steps=150, ite_dt=1e-2,
+    twin_key=_TWIN_KEY,
 ):
     """Sample `num_samples` h-values uniformly in [h_center - radius,
     h_center + radius], ITE-solve each, stack ground states into x_train.
@@ -58,7 +61,7 @@ def sample_circle(
         j_a, h_samples,
         star_ops, trans_ops,
         n_steps=ite_n_steps, dt=ite_dt,
-        key=_TWIN_KEY,
+        key=twin_key,
     )
 
     # --- Legacy single-sample loop (kept commented for easy revert) ---------
@@ -124,6 +127,7 @@ def bootstrap_ae(
     j_a, star_ops, trans_ops,
     ae_cfg, rng_key,
     ite_n_steps=150, ite_dt=1e-2,
+    twin_key=_TWIN_KEY,
 ):
     """Single-circle bootstrap: sample one circle around `h_center`, then
     train a fresh AE and compute its centroid.
@@ -136,6 +140,7 @@ def bootstrap_ae(
         j_a, star_ops, trans_ops,
         sample_key,
         ite_n_steps=ite_n_steps, ite_dt=ite_dt,
+        twin_key=twin_key,
     )
     ae = train_ae_and_centroid(circle['x_train'], ae_cfg, train_key)
     return {**circle, **ae}
@@ -150,6 +155,7 @@ def retrain_with_history(
     rng_key,
     eps_norm=1e-8,
     ite_n_steps=150, ite_dt=1e-2,
+    twin_key=_TWIN_KEY,
 ):
     """History-aware AE retrain. For each h_center in `bootstrap_history`,
     freshly sample a circle of `num_samples_per_circle` h-values with the same
@@ -182,6 +188,7 @@ def retrain_with_history(
             j_a, star_ops, trans_ops,
             k,
             ite_n_steps=ite_n_steps, ite_dt=ite_dt,
+            twin_key=twin_key,
         )
         h_per_circle.append(c['h_samples'])
         x_per_circle.append(c['x_train'])
