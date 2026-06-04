@@ -17,12 +17,19 @@ conda activate test
 mkdir -p /home/szhou3/diffphase/logs
 
 cd /home/szhou3/diffphase/diff_phase
-git fetch origin main
-git sparse-checkout set tfim_reorg z2gauge xxz_dmrg
-git checkout main
-git pull origin main
+# Serialize the git step: concurrent seed jobs share this checkout dir and
+# would otherwise race on .git/index.lock. All jobs pull the same commit, so a
+# lock around the git block is sufficient.
+(
+  flock 9
+  git fetch origin main
+  git sparse-checkout set tfim_reorg z2gauge xxz_dmrg
+  git checkout main
+  git pull origin main
+) 9>/home/szhou3/diffphase/.gitsync.lock
 
 
 cd /home/szhou3/diffphase/diff_phase/xxz_dmrg/scripts/
 export JAX_PLATFORMS=cpu
+echo "AE_SEED=${AE_SEED:-<default>}"
 python -u main_resume_with_history.py

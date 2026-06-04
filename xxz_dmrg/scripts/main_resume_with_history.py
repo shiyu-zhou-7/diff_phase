@@ -18,6 +18,7 @@ Checkpoint loaded : ../models/active_phase_discovery_checkpoint_latest.pkl
 Checkpoint written: ../models/active_phase_resume_history_<timestamp>.pkl  (never overwrites latest)
 """
 
+import os
 import numpy as np
 from datetime import datetime
 from dataclasses import replace
@@ -48,9 +49,14 @@ from workflows.active_phase_discovery import active_phase_discovery, sample_para
 from utils.io import save_pickle, load_pickle
 
 # ── tunables ──────────────────────────────────────────────────────────────────
+# AE_SEED  = 72849163  # run 430431
+# AE_SEED  = 83952505  # run 435990
+# AE_SEED  = 50678225
+AE_SEED  = int(os.environ.get('AE_SEED', 50678225))
+
 CHECKPOINT_IN  = '../models/active_phase_discovery_checkpoint_latest.pkl'
-CHECKPOINT_OUT = f'../models/active_phase_resume_history_{timestamp}.pkl'
-RESUME_CHECKPOINT_PATH = f'../models/active_phase_resume_history_run_{timestamp}.pkl'
+CHECKPOINT_OUT = f'../models/active_phase_resume_history_{timestamp}_seed{AE_SEED}.pkl'
+RESUME_CHECKPOINT_PATH = f'../models/active_phase_resume_history_run_{timestamp}_seed{AE_SEED}.pkl'
 
 L               = 20
 BOOTSTRAP_N     = 500    # samples per circle (1000 total)
@@ -62,9 +68,7 @@ HISTORY_H       = -0.3
 MAX_OUTER_ITERS = 6
 # ──────────────────────────────────────────────────────────────────────────────
 
-# ae_cfg   = replace(AEConfig(), seed=72849163)  # run 430431
-# ae_cfg   = replace(AEConfig(), seed=83952505)  # run 435990
-ae_cfg   = replace(AEConfig(), seed=50678225)
+ae_cfg   = replace(AEConfig(), seed=AE_SEED)
 ham_cfg  = HamConfig()
 dmrg_cfg = DMRGConfig()
 act_cfg  = replace(
@@ -193,6 +197,6 @@ with _devctx:
 
     save_pickle(
         {'params': params, 'centroid': np.array(centroid), 'hist': hist},
-        f'../models/active_phase_resume_history_final_{timestamp}.pkl',
+        f'../models/active_phase_resume_history_final_{timestamp}_seed{AE_SEED}.pkl',
     )
-    print(f"Saved final output: ../models/active_phase_resume_history_final_{timestamp}.pkl")
+    print(f"Saved final output: ../models/active_phase_resume_history_final_{timestamp}_seed{AE_SEED}.pkl")
