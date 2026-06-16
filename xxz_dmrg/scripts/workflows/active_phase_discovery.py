@@ -56,7 +56,8 @@ def active_phase_discovery(L=20, init_delta=-1.5, init_h=0.3,
                            act_cfg: ActiveConfig = ActiveConfig(),
                            dmrg_cfg: DMRGConfig = DMRGConfig(),
                            init_ae_params=None, ferro_centroid=None, max_outer_iters=6,
-                           checkpoint_path=None, checkpoint_every_steps=50, checkpoint_every_outer=1):
+                           checkpoint_path=None, checkpoint_every_steps=50, checkpoint_every_outer=1,
+                           run_tag=''):
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -219,13 +220,14 @@ def active_phase_discovery(L=20, init_delta=-1.5, init_h=0.3,
             save_checkpoint('outer_iter', outer + 1, step + 1)
 
     # save hamiltonian parameters history
+    tag = f'{run_tag}_' if run_tag else ''
     print('Saving Hamiltonian parameters history...')
-    save_pickle(history, f'../models/active_phase_ham_params_history_{timestamp}.pkl')
+    save_pickle(history, f'../models/active_phase_ham_params_history_{tag}{timestamp}.pkl')
 
     # plotting
     deltas = [p[0] for p in history['ham_params']]
     hs = [p[1] for p in history['ham_params']]
     print('Plotting Hamiltonian parameters history...')
-    plot_trajectory(deltas, hs, f'../figures/active_phase_ham_params_history_{timestamp}.png')
+    plot_trajectory(deltas, hs, f'../figures/active_phase_ham_params_history_{tag}{timestamp}.png')
 
     return init_ae_params, ferro_centroid, history
