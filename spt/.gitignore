@@ -1,0 +1,4 @@
+# run artifacts (regenerable)
+data/
+figures/
+__pycache__/
