@@ -26,7 +26,14 @@ cd /home/szhou3/diffphase/diff_phase
   git pull origin main
 ) 9>/home/szhou3/diffphase/.gitsync.lock
 
-cd /home/szhou3/diffphase/diff_phase/spt/scripts/
+# Outputs must live OUTSIDE the shared git checkout. Sibling xxz/z2 jobs reset the
+# sparse-checkout set (excluding spt) at their own startup, which deletes spt/ and
+# everything under it -- including spt/data and spt/figures. benchmark.py writes to
+# the relative paths ../data and ../figures, so we run it from a persistent results
+# dir whose parent holds those folders, well outside the tree git can wipe.
+RESULTS_ROOT=/home/szhou3/diffphase/spt_results
+mkdir -p "$RESULTS_ROOT/data" "$RESULTS_ROOT/figures" "$RESULTS_ROOT/cwd"
+cd "$RESULTS_ROOT/cwd"   # ../data, ../figures -> $RESULTS_ROOT/{data,figures}
 
 # CPU-only; cap threads so JAX does not oversubscribe on the small (2^{L-1})
 # sector matrices (oversubscription is a big slowdown there).
@@ -48,4 +55,5 @@ export EPS=${EPS:-0.1}
 export SEED=${SEED:-0}
 
 echo "spt benchmark  D=$D K=$K L=$L EPOCHS=$EPOCHS MAX_OUTER=$MAX_OUTER SEED=$SEED"
-python -u benchmark.py
+echo "writing results to $RESULTS_ROOT/{data,figures}"
+python -u /home/szhou3/diffphase/diff_phase/spt/scripts/benchmark.py
