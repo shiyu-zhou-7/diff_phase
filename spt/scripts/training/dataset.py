@@ -9,7 +9,7 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 
-from hamiltonians.cluster import gd_solver_ed
+from hamiltonians.cluster import gd_solver_ed, lift_to_full
 from hamiltonians.observables import feature_vector
 
 
@@ -41,6 +41,31 @@ def generate_features(ts, model):
     for t in ts:
         _, psi = gd_solver_ed(jnp.asarray(t, dtype=jnp.float64), model)
         rows.append(np.asarray(feature_vector(psi, model)))
+    X = jnp.asarray(np.stack(rows, axis=0))
+    return X, len(ts)
+
+
+def _sign_fix_np(psi):
+    """Gauge convention: make the largest-|amplitude| component positive so the
+    same physical state maps to one vector (removes eigh's arbitrary overall sign)."""
+    k = int(np.argmax(np.abs(psi)))
+    s = np.sign(psi[k])
+    return psi * (s if s != 0 else 1.0)
+
+
+def generate_wavefunctions(ts, model):
+    """ED-solve each t in the P=+1 sector (forward only), lift to the full 2^L space,
+    and sign-fix -> one gauge-fixed full wavefunction per t.
+
+    The AE-input analogue of generate_features, but the raw (sign-fixed) wavefunction
+    instead of the rho0-routed observable vector. Consistent with the sign convention
+    used inside the differentiable inner loss (training/optim_t.py). Returns
+    (X, n_queries) with X of shape (len(ts), 2^L)."""
+    rows = []
+    for t in ts:
+        _, psi_sec = gd_solver_ed(jnp.asarray(t, dtype=jnp.float64), model)
+        psi_full = np.real(np.asarray(lift_to_full(psi_sec, model))).ravel()
+        rows.append(_sign_fix_np(psi_full))
     X = jnp.asarray(np.stack(rows, axis=0))
     return X, len(ts)
 

@@ -32,7 +32,8 @@ from configs.config import AEConfig, ClusterConfig, ActiveConfig
 from hamiltonians.cluster import build_cluster_model
 from models.autoencoder import init_params, fetch_latent
 from training.ae_train import train_autoencoder
-from training.dataset import sample_params, generate_features, feature_dim, normalize_rows
+from training.dataset import (sample_params, generate_features, generate_wavefunctions,
+                              feature_dim, normalize_rows)
 from training.optim_t import make_opt_step
 from analytic.cluster_exact import winding
 from utils.io import save_pickle
@@ -55,7 +56,8 @@ def _bootstrap(centers, sigma, n_per_center, model, ae_cfg, act_cfg, key, qc,
     X_list = []
     for c, k in zip(centers, keys[:len(centers)]):
         ts = sample_params(c, sigma, n_per_center, k, normalize=act_cfg.normalize_sphere)
-        X, nq = generate_features(ts, model)
+        # X, nq = generate_features(ts, model)          # old rho0-routed observable input
+        X, nq = generate_wavefunctions(ts, model)       # sign-fixed full 2^L wavefunction
         qc.add(nq)
         X_list.append(np.asarray(X))
     X_all = jnp.asarray(np.concatenate(X_list, axis=0))
@@ -68,7 +70,7 @@ def _bootstrap(centers, sigma, n_per_center, model, ae_cfg, act_cfg, key, qc,
         epochs=(epochs if epochs is not None else ae_cfg.epochs),
         lr=ae_cfg.lr, weight_decay=ae_cfg.weight_decay,
         drop_p=ae_cfg.dropout_p, center_coeff=ae_cfg.center_coeff,
-        seed=ae_cfg.seed,
+        seed=ae_cfg.seed, loss='fidelity',   # AE input is a wavefunction
     )
     Z = fetch_latent(params, X_all, jax.random.PRNGKey(0))
     centroid = jnp.mean(Z, axis=0)

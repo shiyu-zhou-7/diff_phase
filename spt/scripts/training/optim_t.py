@@ -17,16 +17,30 @@ import jax.numpy as jnp
 from jax import value_and_grad, jit
 import optax
 
-from hamiltonians.cluster import ground_state_vector
-from hamiltonians.observables import feature_vector
+from hamiltonians.cluster import ground_state_vector, lift_to_full
+from hamiltonians.observables import feature_vector  # kept for the commented revert path
 from models.autoencoder import fetch_latent
 
 
 def latent_distance_loss(t, ae_params, centroid, model, eta):
-    """-||z(t) - centroid||^2 : minimizing it MAXIMIZES latent distance."""
-    psi = ground_state_vector(t, model, eta)          # custom-jvp eigenvector
-    feats = feature_vector(psi, model)                # rho0-routed, gauge invariant
-    z = fetch_latent(ae_params, feats[None, :], jax.random.PRNGKey(0))[0]
+    """-||z(t) - centroid||^2 : minimizing it MAXIMIZES latent distance.
+
+    AE input is the sign-fixed FULL wavefunction: the P=+1 sector ground state
+    (custom-jvp) lifted to the full 2^L space. The sign-fix (largest-|amplitude|
+    positive) supplies the gauge convention the non-stoquastic cluster chain lacks;
+    its multiplier s = +/-1 is locally constant, so autodiff sees d(psi_fixed) =
+    s * d(psi) and the gradient is well-behaved (it still diverges AT a boundary,
+    the detector signal). The largest amplitude is O(1) for a normalized state, so
+    sign() is never 0.
+    """
+    psi_sec = ground_state_vector(t, model, eta)      # custom-jvp sector eigenvector
+    psi_full = lift_to_full(psi_sec, model)           # differentiable lift to 2^L
+    k = jnp.argmax(jnp.abs(psi_full))
+    psi_fixed = psi_full * jnp.sign(psi_full[k])      # sign-fix (see docstring)
+    z = fetch_latent(ae_params, psi_fixed[None, :], jax.random.PRNGKey(0))[0]
+    # --- old rho0-routed observable input (gauge invariant), kept for easy revert:
+    # feats = feature_vector(psi_sec, model)
+    # z = fetch_latent(ae_params, feats[None, :], jax.random.PRNGKey(0))[0]
     diff = z - centroid
     return -jnp.sum(diff * diff)
 

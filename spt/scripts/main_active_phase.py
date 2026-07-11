@@ -38,6 +38,13 @@ cluster_cfg = ClusterConfig(
     seed=_envint('SEED', ClusterConfig().seed),
 )
 ae_cfg = AEConfig()
+# wavefunction-input AE: [2^L, hidden, latent, hidden, 2^L] = [1024, 512, 128, 512, 1024]
+# at L=10. center_coeff stays at the AEConfig default (1e-3).
+ae_cfg = replace(
+    ae_cfg,
+    hidden=_envint('HIDDEN', 512),
+    latent_dim=_envint('LATENT_DIM', 128),
+)
 act_cfg = ActiveConfig()
 
 if 'EPOCHS' in os.environ:

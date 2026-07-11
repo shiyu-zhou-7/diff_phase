@@ -6,18 +6,26 @@ import jax
 import jax.numpy as jnp
 import optax
 
-from models.autoencoder import make_ae_step
+from models.autoencoder import make_ae_step, make_ae_step_fidelity
 
 
 def train_autoencoder(init_params, x_train, *, epochs=4000, lr=1e-3,
                       weight_decay=0.0, drop_p=0.0, center_coeff=1e-3,
-                      seed=83948, log_every=1000):
-    """Train the AE on feature vectors x_train (B, D); returns trained params."""
+                      seed=83948, log_every=1000, loss='mse'):
+    """Train the AE on x_train (B, D); returns trained params.
+
+    loss='mse' (default): MSE reconstruction -- for the feature-vector AEs.
+    loss='fidelity': 1 - fidelity -- for normalized wavefunction inputs."""
     key = jax.random.PRNGKey(seed)
     x_train = jnp.asarray(x_train)
 
     opt = optax.adamw(learning_rate=lr, weight_decay=weight_decay)
-    step = make_ae_step(opt)
+    if loss == 'fidelity':
+        step = make_ae_step_fidelity(opt)
+    elif loss == 'mse':
+        step = make_ae_step(opt)
+    else:
+        raise ValueError(f"loss must be 'mse' or 'fidelity', got {loss!r}")
     opt_state = opt.init(init_params)
 
     params = init_params
