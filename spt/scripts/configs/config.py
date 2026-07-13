@@ -33,7 +33,7 @@ class ClusterConfig:
     # inner optimization over the d-vector t
     lr: float = 5e-2
     max_steps_block: int = 500    # max inner Adam steps per outer block
-    param_tol_change: float = 1e-5  # |dt|_inf below this for stall
+    param_tol_change: float = 1e-3  # |dt|_inf below this for stall
     stall_window: int = 20
     nan_lr_mult: float = 10.0     # temporary lr boost after a NaN jump
     nan_lr_steps: int = 5
@@ -56,6 +56,6 @@ class ActiveConfig:
     nan_jump_scale: float = 2.0       # momentum overshoot = scale * last_dir
     nan_jump_noise: float = 0.1       # random kick magnitude (first NaN, no last_dir)
     normalize_sphere: bool = True     # project t onto the unit sphere S^{d-1}
-    converge_tol: float = 1e-3        # end the run once a block moves t less than
+    converge_tol: float = 1e-4        # end the run once a block moves t less than
                                       # this on the sphere (settled fixed point;
                                       # no analytic label read)
