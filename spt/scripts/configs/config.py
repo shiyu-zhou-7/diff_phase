@@ -16,7 +16,7 @@ class AEConfig:
     lr: float = 1e-3
     weight_decay: float = 0.0     # AdamW style
     epochs: int = 4000
-    mini_epochs: int = 2000       # quicker refresh on retrain
+    mini_epochs: int = 4000       # quicker refresh on retrain
     center_coeff: float = 1e-3    # latent-variance penalty in ae_loss
     init_scale: float = 1e-2
 
@@ -32,8 +32,8 @@ class ClusterConfig:
     seed: int = 83948
     # inner optimization over the d-vector t
     lr: float = 5e-2
-    max_steps_block: int = 300    # max inner Adam steps per outer block
-    param_tol_change: float = 1e-4  # |dt|_inf below this for stall
+    max_steps_block: int = 500    # max inner Adam steps per outer block
+    param_tol_change: float = 1e-5  # |dt|_inf below this for stall
     stall_window: int = 20
     nan_lr_mult: float = 10.0     # temporary lr boost after a NaN jump
     nan_lr_steps: int = 5
@@ -48,14 +48,14 @@ class ClusterConfig:
 
 @dataclass
 class ActiveConfig:
-    t_radius_init: float = 0.25       # sampling radius (Gaussian sigma) around init t
-    t_radius_retrain: float = 0.2     # radius per historical center on retrain
+    t_radius_init: float = 0.1        # sampling radius (Gaussian sigma) around init t
+    t_radius_retrain: float = 0.1     # radius per historical center on retrain
     num_samples_init: int = 400       # ED samples for the FIRST bootstrap
     num_samples_bootstrap: int = 200  # ED samples per center on each retrain
     max_outer_iters: int = 6          # max bootstrap retrains per run
     nan_jump_scale: float = 2.0       # momentum overshoot = scale * last_dir
     nan_jump_noise: float = 0.1       # random kick magnitude (first NaN, no last_dir)
     normalize_sphere: bool = True     # project t onto the unit sphere S^{d-1}
-    converge_tol: float = 0.04        # end the run once a block moves t less than
+    converge_tol: float = 1e-3        # end the run once a block moves t less than
                                       # this on the sphere (settled fixed point;
                                       # no analytic label read)
