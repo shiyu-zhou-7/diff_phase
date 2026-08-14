@@ -55,4 +55,5 @@ def make_opt_step(opt, model, eta):
         t = optax.apply_updates(t, updates)
         gnorm = jnp.linalg.norm(grads)
         return t, opt_state, loss, gnorm
-    return opt_step
+    # return opt_step    # eager: ~1500s/step at L=12 (op-by-op dispatch); OK at L=10
+    return jit(opt_step)

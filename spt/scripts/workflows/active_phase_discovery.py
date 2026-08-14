@@ -104,6 +104,11 @@ def run_active_phase_discovery(t_init, model, ae_cfg, cluster_cfg, act_cfg,
     t_per_step, loss_per_step, grad_per_step = [], [], []
     omega_per_step, event_per_step, query_per_step = [], [], []
 
+    # full-coverage early stop (benchmark budget): windings seen so far,
+    # including the start point. Only consulted when act_cfg.stop_on_full_coverage.
+    target_omegas = set(range(d))
+    seen_omegas = {int(winding(np.asarray(t_init)))}
+
     cfg_snapshot = {
         't_init': t_init.tolist(),
         'ae_cfg': asdict(ae_cfg),
@@ -208,6 +213,10 @@ def run_active_phase_discovery(t_init, model, ae_cfg, cluster_cfg, act_cfg,
                 t_per_step.append(np.asarray(t)); loss_per_step.append(float('nan'))
                 grad_per_step.append(float('nan')); omega_per_step.append(int(winding(np.asarray(t))))
                 event_per_step.append('nan_jump'); query_per_step.append(qc.n)
+                seen_omegas.add(omega_per_step[-1])
+                if act_cfg.stop_on_full_coverage and target_omegas <= seen_omegas:
+                    exit_reason = 'full_coverage'
+                    break
                 continue
 
             consec_failed = 0
@@ -224,6 +233,10 @@ def run_active_phase_discovery(t_init, model, ae_cfg, cluster_cfg, act_cfg,
             t_per_step.append(np.asarray(t)); loss_per_step.append(float(loss))
             grad_per_step.append(float(gnorm)); omega_per_step.append(int(winding(np.asarray(t))))
             event_per_step.append('normal'); query_per_step.append(qc.n)
+            seen_omegas.add(omega_per_step[-1])
+            if act_cfg.stop_on_full_coverage and target_omegas <= seen_omegas:
+                exit_reason = 'full_coverage'
+                break
 
             change = float(np.max(np.abs(np.asarray(step_dir))))
             recent_change.append(change)
@@ -236,6 +249,10 @@ def run_active_phase_discovery(t_init, model, ae_cfg, cluster_cfg, act_cfg,
 
         print(f'[spt]   inner exit={exit_reason} steps={step+1} '
               f't={np.round(np.asarray(t),3)} omega={winding(np.asarray(t))} queries={qc.n}')
+
+        if exit_reason == 'full_coverage':
+            print(f'[spt]   all {d} windings visited ({sorted(seen_omegas)}) -> stop run')
+            break
 
         if outer == act_cfg.max_outer_iters:
             break

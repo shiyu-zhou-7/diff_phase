@@ -59,12 +59,14 @@ for d, alpha in [(3, 0), (3, 1), (3, 2), (5, 0), (5, 2), (5, 4)]:
 
 # ---------------------------------------------------------------------------
 print("== gapless flag on the boundary hyperplanes ==")
-# z=+1 boundary: sum_alpha t_alpha = 0
-t = np.array([1.0, -1.0, 0.0])        # g(1) = 0
+# z=+1 boundary: -t_0 + t_1 + t_2 = 0  (alpha=0 plus convention: ttilde_0 = -t_0)
+# t = np.array([1.0, -1.0, 0.0])      # old convention: g(1) = 0
+t = np.array([1.0, 1.0, 0.0])         # g(1) = -1 + 1 = 0
 check("sum t = 0 is gapless", is_gapless(t), f"roots={np.round(g_roots(t),4)}")
 check("boundary_value_z_plus1 == 0", abs(boundary_value_z_plus1(t)) < 1e-12)
-# z=-1 boundary: t_0 - t_1 + t_2 = 0
-t = np.array([1.0, 2.0, 1.0])         # g(-1) = 1 - 2 + 1 = 0
+# z=-1 boundary: -t_0 - t_1 + t_2 = 0
+# t = np.array([1.0, 2.0, 1.0])       # old convention: g(-1) = 1 - 2 + 1 = 0
+t = np.array([-1.0, 2.0, 1.0])        # g(-1) = 1 - 2 + 1 = 0
 check("alt-sum t = 0 is gapless", is_gapless(t))
 check("boundary_value_z_minus1 == 0", abs(boundary_value_z_minus1(t)) < 1e-12)
 # generic interior point is gapped
@@ -112,12 +114,13 @@ check("thermo gap > 0 at interior point", gap_thermo(t) > 1e-6)
 
 # ---------------------------------------------------------------------------
 print("== boundary crossing: real z=+1 line ==")
-# d=2: g(z) = t_0 + t_1 z, single root z = -t_0/t_1. Fix t_1=1, sweep
-# t_0 = -0.5 - s so the root = 0.5 + s crosses z=+1 at s=0.5 (t_0=-1). The root
-# stays real positive throughout, so ONLY the z=+1 boundary is hit (g(+1)=t_0+1
-# vanishes at s=0.5; g(-1)=t_0-1 stays negative). Clean single crossing.
+# d=2: g(z) = -t_0 + t_1 z (alpha=0 plus convention), single root z = t_0/t_1.
+# Fix t_1=1, sweep t_0 = 0.5 + s so the root = 0.5 + s crosses z=+1 at s=0.5
+# (t_0=+1). The root stays real positive throughout, so ONLY the z=+1 boundary
+# is hit (g(+1)=-t_0+1 vanishes at s=0.5; g(-1)=-t_0-1 stays negative).
 s = np.linspace(0.0, 1.0, 401)
-t_path = np.stack([-0.5 - s, np.ones_like(s)], axis=1)
+# t_path = np.stack([-0.5 - s, np.ones_like(s)], axis=1)   # old convention
+t_path = np.stack([0.5 + s, np.ones_like(s)], axis=1)
 cr = boundary_crossings(t_path, s)
 check("one z=+1 crossing found", len(cr) == 1 and cr[0]['type'] == 'z=+1',
       f"got {cr}")
@@ -130,9 +133,10 @@ if cr:
 
 # ---------------------------------------------------------------------------
 print("== boundary crossing: real z=-1 line ==")
-# Same d=2 family but root real negative: t_1=1, t_0 = 0.5 + s, root = -(0.5+s)
-# crosses z=-1 at s=0.5. Only g(-1)=t_0-1 vanishes (g(+1)=t_0+1 stays positive).
-t_path = np.stack([0.5 + s, np.ones_like(s)], axis=1)
+# Same d=2 family but root real negative: t_1=1, t_0 = -0.5 - s, root = -(0.5+s)
+# crosses z=-1 at s=0.5. Only g(-1)=-t_0-1 vanishes (g(+1)=-t_0+1 stays positive).
+# t_path = np.stack([0.5 + s, np.ones_like(s)], axis=1)    # old convention
+t_path = np.stack([-0.5 - s, np.ones_like(s)], axis=1)
 cr = boundary_crossings(t_path, s)
 check("one z=-1 crossing found", len(cr) == 1 and cr[0]['type'] == 'z=-1',
       f"got {cr}")
@@ -147,10 +151,11 @@ if cr:
 print("== boundary crossing: complex pair (c=1, |dw|=2) ==")
 # d=3: sweep t_2 dominant -> t_0 dominant through a complex-pair crossing while
 # keeping sum and alt-sum away from zero so the real boundaries are not hit.
-# t(s) = (s, 0, 1-s): g = (1-s) z^2 + s. roots z^2 = -s/(1-s) -> pure imaginary,
-# |z| = sqrt(s/(1-s)) crosses 1 at s=0.5, k* = pi/2. sum = 1 (never 0),
-# alt-sum = s + (1-s) = 1 (never 0). Clean complex crossing.
-t_path = np.stack([s, np.zeros_like(s), 1.0 - s], axis=1)
+# t(s) = (-s, 0, 1-s): g = (1-s) z^2 + s (ttilde_0 = -t_0 = s). roots
+# z^2 = -s/(1-s) -> pure imaginary, |z| = sqrt(s/(1-s)) crosses 1 at s=0.5,
+# k* = pi/2. sum and alt-sum both = 1 (never 0). Clean complex crossing.
+# t_path = np.stack([s, np.zeros_like(s), 1.0 - s], axis=1)   # old convention
+t_path = np.stack([-s, np.zeros_like(s), 1.0 - s], axis=1)
 cr = boundary_crossings(t_path, s)
 check("one complex crossing found", len(cr) == 1 and cr[0]['type'] == 'complex',
       f"got {cr}")
@@ -162,9 +167,10 @@ if cr:
     check("complex kstar == pi/2", abs(cr[0]['kstar'] - np.pi/2) < 1e-2,
           f"got {cr[0]['kstar']}")
 # verify the predicted closing momentum at the crossing point directly
+# (t = (-0.5, 0, 0.5) -> ttilde = (0.5, 0, 0.5) -> g = 0.5 z^2 + 0.5)
 check("k* of g=(0.5)z^2+0.5 is pi/2",
-      abs(_closing_kstar(np.array([0.5, 0.0, 0.5])) - np.pi/2) < 1e-9,
-      f"got {_closing_kstar(np.array([0.5,0.0,0.5]))}")
+      abs(_closing_kstar(np.array([-0.5, 0.0, 0.5])) - np.pi/2) < 1e-9,
+      f"got {_closing_kstar(np.array([-0.5,0.0,0.5]))}")
 
 # ---------------------------------------------------------------------------
 print()

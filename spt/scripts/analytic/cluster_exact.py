@@ -3,9 +3,16 @@ Analytic ground truth for the generalized cluster (stabilizer) chain.
 
 Model (length-L spin-1/2 chain, open d couplings t = (t_0, ..., t_{d-1})):
 
-    H(t) = - sum_{alpha=0}^{d-1} t_alpha * sum_i  Z_i X_{i+1} ... X_{i+alpha-1} Z_{i+alpha}
+    H(t) = + t_0 sum_i X_i
+           - sum_{alpha=1}^{d-1} t_alpha * sum_i  Z_i X_{i+1} ... X_{i+alpha-1} Z_{i+alpha}
 
-    alpha=0 : -t_0 sum_i X_i              (transverse field)
+    (solver convention, hamiltonians/cluster.py: alpha=0 PLUS, alpha>=1 minus.
+    The JW analysis below is written for the all-minus model
+    H = -sum_alpha ttilde_alpha sum_i S_i; `_tilde` maps t -> (-t_0, t_1, ...)
+    at the entry points f_symbol / g_roots / boundary_value_z_* so every public
+    function here takes the SOLVER's t.)
+
+    alpha=0 : +t_0 sum_i X_i              (transverse field)
     alpha=1 : -t_1 sum_i Z_i Z_{i+1}      (Ising)
     alpha=2 : -t_2 sum_i Z_i X_{i+1} Z_{i+2}  (cluster)
     general : Z_i (X-string length alpha-1) Z_{i+alpha}
@@ -46,6 +53,19 @@ import numpy as np
 # ----------------------------------------------------------------------------
 # Bloch symbol and polynomial roots
 # ----------------------------------------------------------------------------
+def _tilde(t):
+    """Map solver couplings to the all-minus convention the JW symbol assumes.
+
+    The JW mapping below is derived for H = -sum_alpha ttilde_alpha sum_i S_i.
+    The solver (hamiltonians/cluster.py) now uses a PLUS sign for the alpha=0
+    transverse-field term, so its t corresponds to ttilde = (-t_0, t_1, ...).
+    Every symbolic function in this module must route t through this helper.
+    """
+    t = np.asarray(t, dtype=float).copy()
+    t[0] = -t[0]
+    return t
+
+
 def f_symbol(t, k):
     """Bloch symbol f(k) = sum_alpha t_alpha e^{i alpha k}.
 
@@ -53,7 +73,8 @@ def f_symbol(t, k):
     k : scalar or array of momenta.
     Returns complex array broadcast over k.
     """
-    t = np.asarray(t, dtype=float)
+    # t = np.asarray(t, dtype=float)   # old: all-minus solver convention
+    t = _tilde(t)                       # new: alpha=0 plus convention
     alphas = np.arange(t.shape[0])
     k = np.asarray(k, dtype=float)
     # outer: e^{i * alpha * k} summed against t_alpha
@@ -69,7 +90,8 @@ def g_roots(t, tol_lead=1e-14):
     which correctly lowers the polynomial degree; a pure point e_alpha
     (g = t_alpha z^alpha) therefore returns alpha roots all at z = 0.
     """
-    t = np.asarray(t, dtype=float)
+    # t = np.asarray(t, dtype=float)   # old: all-minus solver convention
+    t = _tilde(t)                       # new: alpha=0 plus convention
     coeffs = t[::-1]  # p[0] z^(d-1) + ... + p[d-1]
     # strip leading (high-degree) ~zero coefficients so numpy.roots gives the
     # true reduced-degree root set rather than spurious huge roots.
@@ -204,13 +226,17 @@ def ground_energy_bdg(t, L, bc='pbc', sector=+1):
 # Closed-form boundary taxonomy
 # ----------------------------------------------------------------------------
 def boundary_value_z_plus1(t):
-    """g(+1) = sum_alpha t_alpha. Zero on the z=+1 (k=0) boundary hyperplane."""
-    return float(np.sum(np.asarray(t, dtype=float)))
+    """g(+1) = sum_alpha ttilde_alpha (= -t_0 + t_1 + t_2 + ...). Zero on the
+    z=+1 (k=0) boundary hyperplane."""
+    # return float(np.sum(np.asarray(t, dtype=float)))   # old convention
+    return float(np.sum(_tilde(t)))
 
 
 def boundary_value_z_minus1(t):
-    """g(-1) = sum_alpha (-1)^alpha t_alpha. Zero on the z=-1 (k=pi) boundary."""
-    t = np.asarray(t, dtype=float)
+    """g(-1) = sum_alpha (-1)^alpha ttilde_alpha (= -t_0 - t_1 + t_2 - ...).
+    Zero on the z=-1 (k=pi) boundary."""
+    # t = np.asarray(t, dtype=float)                     # old convention
+    t = _tilde(t)
     signs = (-1.0) ** np.arange(t.shape[0])
     return float(np.sum(signs * t))
 

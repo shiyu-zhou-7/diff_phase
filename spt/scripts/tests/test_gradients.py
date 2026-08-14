@@ -117,11 +117,12 @@ print("== 4.3 STATE-loss gradient grows toward a boundary, finite in interior ==
 # The Hellmann-Feynman ENERGY gradient is bounded (<=L) and does NOT diverge at a
 # boundary. The divergence is in a STATE-dependent (rho0) loss, whose eigenvector
 # derivative has the in-sector gap in its denominator. Line from the SPT interior
-# (e_2) toward the z=+1 boundary at s=1 (sum = 1 - s -> 0); sample up to s=0.9 to
-# stay just shy of the exact closing.
+# (e_2) toward the z=+1 boundary at s=1 (-t_0 + t_1 + t_2 -> 0, alpha=0 plus
+# convention); sample up to s=0.9 to stay just shy of the exact closing.
 ts = np.linspace(0.0, 0.9, 19)
 t_int = np.array([0.0, 0.0, 1.0])
-t_bnd = np.array([0.5, 0.5, -1.0])   # sum = 0 at s=1
+# t_bnd = np.array([0.5, 0.5, -1.0])   # old convention: sum = 0 at s=1
+t_bnd = np.array([-0.5, 0.5, -1.0])    # -t_0 + t_1 + t_2 = 0 at s=1
 gnorms = np.array([float(jnp.linalg.norm(grad_ent(jnp.asarray((1 - s) * t_int + s * t_bnd))))
                    for s in ts])
 check("all entropy-grad norms finite away from boundary", np.all(np.isfinite(gnorms)))
@@ -131,12 +132,13 @@ check("entropy-grad norm near boundary > interior",
 
 # ===========================================================================
 print("== 4.4 boundary localization: z=+1 line (single real root through +1) ==")
-# Clean single z=+1 crossing on the t_2=0 face: g(z) = t_0 + t_1 z, single root
-# z = -t_0/t_1. With t_1=1, t_0 = -0.5 - s the root = 0.5 + s crosses z=+1 at
-# s*=0.5 (t_0 = -1, sum = 0). The other root structure is absent (degree 1), so
-# no spurious crossings.
+# Clean single z=+1 crossing on the t_2=0 face: g(z) = -t_0 + t_1 z (alpha=0
+# plus convention), single root z = t_0/t_1. With t_1=1, t_0 = 0.5 + s the root
+# = 0.5 + s crosses z=+1 at s*=0.5 (t_0 = +1). The other root structure is
+# absent (degree 1), so no spurious crossings.
 s_grid = np.linspace(0.0, 1.0, 201)
-t_path = np.stack([-0.5 - s_grid, np.ones_like(s_grid), np.zeros_like(s_grid)], axis=1)
+# t_path = np.stack([-0.5 - s_grid, np.ones_like(s_grid), np.zeros_like(s_grid)], axis=1)  # old
+t_path = np.stack([0.5 + s_grid, np.ones_like(s_grid), np.zeros_like(s_grid)], axis=1)
 cr = boundary_crossings(t_path, s_grid)
 check("one analytic crossing on the line", len(cr) == 1, f"got {len(cr)}")
 s_star = 0.5
@@ -162,8 +164,10 @@ check("loss-gradient peak localizes at analytic s*",
 
 # ===========================================================================
 print("== 4.4 boundary localization: complex-pair crossing (c=1), check k* ==")
-# t(s) = (s, 0, 1-s): g=(1-s)z^2+s, complex pair crosses |z|=1 at s*=0.5, k*=pi/2.
-t_path2 = np.stack([s_grid, np.zeros_like(s_grid), 1.0 - s_grid], axis=1)
+# t(s) = (-s, 0, 1-s): g=(1-s)z^2+s (ttilde_0 = -t_0 = s), complex pair crosses
+# |z|=1 at s*=0.5, k*=pi/2.
+# t_path2 = np.stack([s_grid, np.zeros_like(s_grid), 1.0 - s_grid], axis=1)   # old
+t_path2 = np.stack([-s_grid, np.zeros_like(s_grid), 1.0 - s_grid], axis=1)
 cr2 = boundary_crossings(t_path2, s_grid)
 check("one complex crossing on the line", len(cr2) == 1 and cr2[0]['type'] == 'complex',
       f"got {cr2}")
@@ -172,7 +176,8 @@ if cr2:
     kstar = cr2[0]['kstar']
     check("analytic k* == pi/2", abs(kstar - np.pi / 2) < 1e-2, f"k*={kstar}")
     # predicted k* matches the continuous-k argmin of |f| at the crossing point
-    t_cross = np.array([0.5, 0.0, 0.5])
+    # t_cross = np.array([0.5, 0.0, 0.5])   # old convention
+    t_cross = np.array([-0.5, 0.0, 0.5])
     ks = np.linspace(0, 2 * np.pi, 4001, endpoint=False)
     k_argmin = ks[int(np.argmin(np.abs(f_symbol(t_cross, ks))))]
     k_argmin = min(k_argmin, 2 * np.pi - k_argmin)   # fold to (0,pi]

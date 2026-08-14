@@ -6,8 +6,11 @@ Usage (from spt/scripts/):
     D=3 L=10 main_active_phase.py
     D=3 L=10 EPOCHS=500 INIT_N=100 BOOTSTRAP_N=60 MAX_OUTER=2 python main_active_phase.py  # smoke
 
-Env overrides: D, L, BC, KAPPA, SEED, EPOCHS, MINI_EPOCHS, MAX_OUTER, INIT_N, BOOTSTRAP_N.
-Outputs (timestamped) go to ../data/.
+Env overrides: D, L, BC, KAPPA, SEED, EPOCHS, MINI_EPOCHS, MAX_OUTER, INIT_N, BOOTSTRAP_N,
+RANDOM_INIT (1 = start from a uniform random point on S^{d-1} drawn from SEED,
+instead of the trivial corner e_0), STOP_FULL (1 = end the run as soon as all d
+windings have been visited -- benchmark budget knob, see ActiveConfig).
+Outputs (timestamped, seed-tagged) go to ../data/.
 """
 import sys, os
 from dataclasses import replace, asdict
@@ -57,10 +60,13 @@ if 'INIT_N' in os.environ:
     act_cfg = replace(act_cfg, num_samples_init=_envint('INIT_N', act_cfg.num_samples_init))
 if 'BOOTSTRAP_N' in os.environ:
     act_cfg = replace(act_cfg, num_samples_bootstrap=_envint('BOOTSTRAP_N', act_cfg.num_samples_bootstrap))
+if 'STOP_FULL' in os.environ:
+    act_cfg = replace(act_cfg, stop_on_full_coverage=bool(_envint('STOP_FULL', 0)))
 
 os.makedirs('../data', exist_ok=True)
 ts = timestamp()
-tag = f'd{cluster_cfg.d}_L{cluster_cfg.L}_{cluster_cfg.bc}'
+# tag = f'd{cluster_cfg.d}_L{cluster_cfg.L}_{cluster_cfg.bc}'   # pre-seed-tag form
+tag = f'd{cluster_cfg.d}_L{cluster_cfg.L}_{cluster_cfg.bc}_s{cluster_cfg.seed}'
 bundle_path = f'../data/spt_active_{tag}_{ts}.pkl'
 ckpt_path = f'../data/spt_active_{tag}_{ts}_ckpt.pkl'
 
@@ -73,8 +79,15 @@ model = build_cluster_model(
     sector=cluster_cfg.sector, kappa=cluster_cfg.kappa,
 )
 
-# default start: the trivial (transverse-field) corner e_0
-t_init = np.zeros(cluster_cfg.d); t_init[0] = 1.0
+# default start: the trivial (transverse-field) corner e_0.
+# RANDOM_INIT=1: uniform random point on the sphere S^{d-1} (normalized
+# standard normal), reproducibly drawn from SEED.
+if bool(_envint('RANDOM_INIT', 0)):
+    _rng_init = np.random.default_rng(cluster_cfg.seed)
+    t_init = _rng_init.standard_normal(cluster_cfg.d)
+    t_init /= np.linalg.norm(t_init)
+else:
+    t_init = np.zeros(cluster_cfg.d); t_init[0] = 1.0
 
 rng = jax.random.PRNGKey(cluster_cfg.seed)
 result = run_active_phase_discovery(

@@ -96,9 +96,11 @@ for d, L in [(3, 10), (4, 10)]:
     _, gp_int = ed_e0_gap(t_int, model)
     check(f"d={d} interior ED gap O(1)", gp_int > 0.5, f"gap={gp_int}")
     check(f"d={d} interior bulk gap O(1)", gap_thermo(t_int) > 0.5)
-    # boundary point on sum_alpha t_alpha = 0 (z=+1): build t with zero sum
+    # boundary point on -t_0 + sum_{alpha>=1} t_alpha = 0 (z=+1, alpha=0 plus
+    # convention): set t_0 equal to the sum of the rest
     t_bnd = np.ones(d) / d
-    t_bnd[0] -= np.sum(t_bnd)   # force sum = 0
+    # t_bnd[0] -= np.sum(t_bnd)          # old convention: force sum = 0
+    t_bnd[0] = np.sum(t_bnd[1:])         # force -t_0 + sum_rest = 0
     check(f"d={d} boundary is analytically gapless", is_gapless(t_bnd))
     check(f"d={d} boundary bulk gap ~ 0", gap_thermo(t_bnd) < 1e-6,
           f"gap_thermo={gap_thermo(t_bnd)}")

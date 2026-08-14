@@ -10,7 +10,9 @@ quadratic form -- so all of these are smooth, differentiable functions of t.
 Three phase-diagnostic order parameters (independent of the root finder; used to
 cross-check `winding` in validation section 4.2):
 
-  * m_X   = (1/L) sum_i <X_i>             : ~1 in the trivial paramagnet (omega=0)
+  * m_X   = -(1/L) sum_i <X_i>            : ~1 in the trivial paramagnet (omega=0)
+                                            (minus: the +t_0 sum X_i field makes the
+                                            paramagnet anti-align, <X_i> = -1)
   * O_Z2  = <Z_0 Z_{L/2}>                 : ~1 in the Z2-broken phase (omega=1)
                                             (long-range order; in the fixed +parity
                                             sector <Z_i>=0 but <Z_i Z_j> != 0, a cat)
@@ -56,10 +58,15 @@ def _expval(psi_full, L, x_sites, z_sites):
 # Order parameters (each takes the lifted full-space state)
 # ----------------------------------------------------------------------------
 def magnetization_x(psi_full, model: ClusterModel):
-    """m_X = (1/L) sum_i <X_i>. Detects the trivial paramagnet (omega=0)."""
+    """m_X = -(1/L) sum_i <X_i>. Detects the trivial paramagnet (omega=0).
+
+    Sign convention: the alpha=0 field enters H with PLUS (+t_0 sum_i X_i,
+    hamiltonians/cluster.py), so the paramagnetic ground state anti-aligns
+    (<X_i> = -1); the minus here keeps m_X ~ +1 in the trivial phase."""
     L = model.L
     vals = [_expval(psi_full, L, [i], []) for i in range(L)]
-    return jnp.mean(jnp.stack(vals))
+    # return jnp.mean(jnp.stack(vals))    # old: all-minus H convention
+    return -jnp.mean(jnp.stack(vals))
 
 
 def zz_correlation(psi_full, model: ClusterModel, r=None):

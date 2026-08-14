@@ -1,9 +1,14 @@
 """
 ED solver backend for the generalized cluster (stabilizer) chain.
 
-    H(t) = - sum_{alpha=0}^{d-1} t_alpha * sum_i  Z_i X_{i+1}...X_{i+alpha-1} Z_{i+alpha}
+    H(t) = + t_0 * sum_i X_i
+           - sum_{alpha=1}^{d-1} t_alpha * sum_i  Z_i X_{i+1}...X_{i+alpha-1} Z_{i+alpha}
            (+ optional kappa * sum_i Z_i Z_{i+2}, see `kappa` -- interacting,
             relinquishes the free-fermion analytic ground truth)
+    NOTE sign convention: alpha=0 (transverse field) enters with PLUS; all
+    alpha>=1 stabilizer terms keep the folded MINUS. The analytic grader
+    (analytic/cluster_exact.py) assumes the all-minus convention, so its
+    winding/gap/boundary functions must be fed (-t_0, t_1, ..., t_{d-1}).
 
 Design (conforms to the diffphase solver contract; mirrors the TFIM/xxz pattern
 where term operators are constant and the Hamiltonian is LINEAR in the params):
@@ -96,7 +101,8 @@ def _pauli_sparse(L, xmask, zmask):
 
 
 def _term_full(L, alpha, bc):
-    """Full-space sparse operator  - sum_i stabilizer_{alpha,i}  (minus folded
+    """Full-space sparse operator: + sum_i X_i for alpha=0 (transverse field,
+    plus convention), - sum_i stabilizer_{alpha,i} for alpha>=1 (minus folded
     in so H = sum_alpha t_alpha * T_alpha)."""
     dim = 1 << L
     T = sp.csr_matrix((dim, dim))
@@ -106,7 +112,8 @@ def _term_full(L, alpha, bc):
         if m is None:
             continue
         T = T + _pauli_sparse(L, m[0], m[1])
-    return -T
+    # return -T                        # old: minus folded into EVERY alpha
+    return T if alpha == 0 else -T     # alpha=0: +t_0 sum_i X_i; alpha>=1: minus kept
 
 
 def _kappa_full(L, bc):

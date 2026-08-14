@@ -59,3 +59,9 @@ class ActiveConfig:
     converge_tol: float = 1e-4        # end the run once a block moves t less than
                                       # this on the sphere (settled fixed point;
                                       # no analytic label read)
+    stop_on_full_coverage: bool = False  # benchmark budget knob: end the run as
+                                      # soon as the omega trail has visited all d
+                                      # windings {0..d-1}. Reads the ANALYTIC
+                                      # label, but only to TRUNCATE the run for
+                                      # cost accounting -- never to steer the
+                                      # search (loss/stall logic unchanged).
