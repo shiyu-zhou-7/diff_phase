@@ -62,6 +62,8 @@ if 'BOOTSTRAP_N' in os.environ:
     act_cfg = replace(act_cfg, num_samples_bootstrap=_envint('BOOTSTRAP_N', act_cfg.num_samples_bootstrap))
 if 'STOP_FULL' in os.environ:
     act_cfg = replace(act_cfg, stop_on_full_coverage=bool(_envint('STOP_FULL', 0)))
+if 'NAN_JUMP_SCALE' in os.environ:
+    act_cfg = replace(act_cfg, nan_jump_scale=float(os.environ['NAN_JUMP_SCALE']))
 
 os.makedirs('../data', exist_ok=True)
 ts = timestamp()

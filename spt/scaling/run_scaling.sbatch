@@ -36,8 +36,9 @@ cd /home/szhou3/diffphase/diff_phase
 
 # Outputs live OUTSIDE the shared git checkout (sibling jobs can reset the
 # sparse-checkout set and wipe spt/). main_active_phase.py writes to ../data and
-# ../figures relative to cwd, so run from a persistent results dir.
-RESULTS_ROOT=/home/szhou3/diffphase/spt_results/scaling_L12
+# ../figures relative to cwd, so run from a persistent results dir. EXP names
+# the experiment subdir (e.g. EXP=longer_d10_armA keeps arms separated).
+RESULTS_ROOT=/home/szhou3/diffphase/spt_results/${EXP:-scaling_L12}
 mkdir -p "$RESULTS_ROOT/data" "$RESULTS_ROOT/figures" "$RESULTS_ROOT/cwd" "$RESULTS_ROOT/logs"
 cd "$RESULTS_ROOT/cwd"   # ../data, ../figures -> $RESULTS_ROOT/{data,figures}
 
@@ -53,7 +54,8 @@ export BC=${BC:-pbc}
 K=${K:-8}
 BASE_SEED=${BASE_SEED:-83948}
 
-echo "spt scaling  D=$D L=$L K=$K BASE_SEED=$BASE_SEED node=$(hostname)"
+echo "spt scaling  D=$D L=$L K=$K BASE_SEED=$BASE_SEED node=$(hostname)" \
+     "MAX_OUTER=${MAX_OUTER:-default} NAN_JUMP_SCALE=${NAN_JUMP_SCALE:-default} EXP=${EXP:-scaling_L12}"
 echo "writing results to $RESULTS_ROOT/{data,figures,logs}"
 
 for rep in $(seq 0 $((K - 1))); do
