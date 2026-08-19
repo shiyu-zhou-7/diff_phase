@@ -40,6 +40,10 @@ cluster_cfg = ClusterConfig(
     kappa=float(os.environ.get('KAPPA', ClusterConfig().kappa)),
     seed=_envint('SEED', ClusterConfig().seed),
 )
+if 'GRAD_CLIP' in os.environ:
+    # anti-chatter clip on the inner gradient (<=0 disables); the boundary
+    # 1/gap divergence is finite here, so a looser clip = longer flings
+    cluster_cfg = replace(cluster_cfg, grad_clip=float(os.environ['GRAD_CLIP']))
 ae_cfg = AEConfig()
 # wavefunction-input AE: [2^L, hidden, latent, hidden, 2^L] = [1024, 512, 128, 512, 1024]
 # at L=10. center_coeff stays at the AEConfig default (1e-3).
