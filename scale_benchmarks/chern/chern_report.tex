@@ -1,0 +1,557 @@
+\documentclass[11pt]{article}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{graphicx,booktabs,amsmath,amssymb,xcolor,hyperref,caption}
+\hypersetup{colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{4pt}\setlength{\parindent}{0pt}
+\newcommand{\good}[1]{\textcolor{blue!70!black}{\textbf{#1}}}
+\newcommand{\bad}[1]{\textcolor{red!65!black}{#1}}
+\newcommand{\kk}{\mathbf{k}}
+\newcommand{\dd}{\mathbf{d}}
+
+\title{\vspace{-1.6cm}Gradient-driven discovery of Chern sectors in a
+high-dimensional band-structure family}
+\author{Working report}
+\date{24 August 2026}
+
+\begin{document}
+\maketitle
+\vspace{-0.7cm}
+
+\begin{abstract}\noindent
+Random sampling of a Hamiltonian parameter space can only reach a phase whose
+share of the volume exceeds roughly $1/N$; a walk that moves continuously
+through the space is instead limited by \emph{connectivity}, and can enter a
+small phase by crossing into it from a neighbour. We test this on a generalized
+two-dimensional Chern insulator with 50 free couplings. The family is chosen
+because its inverse problem is open: the Chern number of a given $\theta$ is
+cheap to \emph{verify}, but no construction is known that produces a $\theta$
+realising a prescribed $\mathcal{C}$. The only closed form we have,
+$a_n=b_n=c_n=1$, yields the perfect squares $\pm n^2$ and accounts for
+\good{18 of the 155} sectors a $10^6$-sample reference realises; combining
+harmonics is not additive, so the obvious composition route is closed. At
+equal budget a label-free gradient walk finds \good{$+68$ more sectors} than
+random sampling at $3\times10^5$ states ($207$ vs $139$, median of five fresh
+seeds), a margin that \good{grows monotonically from $+21$} at $3\times10^4$.
+Both methods saturate every volume decade a $10^6$ reference resolves, so the
+entire measurable difference lies in the two rarest bins, where the walk leads
+by $1.9\times$ and \good{$17.6\times$}. Pooled over five runs it realises
+\good{283 sectors against random sampling's 160}, adds 123 that
+$2.5\times10^{6}$ random samples never produced, and of its 283 sectors
+\good{259 have no known closed-form representative}. All labels are computed on
+a converged Brillouin-zone grid ($M=768$); we show that the $M=96$ grid used in
+an earlier draft of this report is wrong on $\approx65\%$ of points and
+\emph{understated} every margin reported here.
+\end{abstract}
+
+\section*{Summary of claims}
+\vspace{-2pt}
+\begin{itemize}\itemsep2pt
+\item \textbf{The target set cannot be enumerated.} $|\mathcal{C}|\le2H^2=512$
+is proved; the best explicit construction reaches $H^2=256$ and covers only
+$\pm n^2$; whether the bound is attained is open. \good{$92\%$ of the sectors
+the walk realises have no known closed-form representative.} This is what makes
+search the only available access to them.
+\item \textbf{The advantage is not bought by sacrificing common phases.} Both
+methods saturate all four volume decades the reference resolves
+(33/33, 26/26, 29/29, 30/29.4). The walk pays no coverage penalty for chasing
+rare sectors --- a real failure mode for a correlated trajectory, and one it
+avoids. Note that this agreement is \emph{forced}: those bins hold 118 sectors
+in total and $3\times10^5$ random draws are expected to miss $0.2$ of them, so
+the tie cannot by itself distinguish a different access mechanism from a
+better sampler.
+\item \textbf{More samples of the same measure do not close the gap.} Random
+sampling with $2.5\times10^{6}$ draws --- $1.7\times$ the walk's $1.5\times10^6$
+queries --- still misses \good{123 sectors} the walk found, and contributes
+none the walk did not. This is the falsifiable form of the claim, and it uses
+only the standard baseline.
+\item \textbf{The margin grows with budget.} $+21$ at $3\times10^4$ to $+68$ at
+$3\times10^5$, increasing end-to-end in all five seeds. Random sampling
+saturates; the walk does not.
+\item \textbf{Scope.} Established at 50 parameters on this model. At 20 and 32
+parameters the walk loses; at 98 the seed spread makes no claim supportable.
+All sectors are integer Chern numbers --- nothing here is a claim about phases
+of a new \emph{type}, only about which of them are findable.
+\end{itemize}
+
+\section{Motivation}
+
+Mapping a phase diagram means deciding, for each point of a parameter space,
+which phase the ground state belongs to. When the space has a handful of knobs
+this is done by scanning a grid. When it has tens of knobs --- realistic for a
+material family with several competing hoppings, or a synthetic-matter platform
+with many independently tunable terms --- a grid is impossible and the default
+fallback is random sampling.
+
+Random sampling can only land in a phase whose share of parameter-space volume
+exceeds roughly $1/N$ for $N$ samples. Phases occupying small volumes are
+reached only with vanishing probability, and in the models of interest the
+volume spectrum extends over many decades. An exploration method that moves
+\emph{continuously} through the space is not bound by that limit: it can enter
+a small phase by crossing into it from a neighbour. Whether that theoretical
+advantage survives contact with a real objective --- one that never sees a
+phase label --- is the question this report addresses.
+
+Machine-learned phase classification is by now standard when labels or ordered
+training data are available \cite{carrasquilla2017,vanNieuwenburg2017,%
+zhang2017,rodriguez2019}. The problem here is upstream of classification: not
+\emph{how to label} the points one has, but \emph{which points to compute} when
+each ground state costs something and the interesting phases occupy a
+vanishing fraction of the space.
+
+\section{Model}
+
+\subsection{Background}
+
+A two-band Bloch Hamiltonian in two dimensions,
+\begin{equation}
+H(\kk) = \dd(\kk)\cdot\boldsymbol{\sigma},
+\qquad \dd:\ \mathrm{BZ}=T^2 \to \mathbb{R}^3,
+\end{equation}
+has a gapped ground state wherever $|\dd(\kk)|\neq0$, and the occupied band is
+characterised by the Chern number, minus the degree of the map
+$\hat\dd = \dd/|\dd|:T^2\to S^2$,
+\begin{equation}
+\mathcal{C} = -\frac{1}{4\pi}\int_{\mathrm{BZ}}
+\hat\dd\cdot\left(\partial_{k_x}\hat\dd\times\partial_{k_y}\hat\dd\right)d^2k
+\ \in\ \mathbb{Z}.
+\label{eq:chern}
+\end{equation}
+(The sign is the occupied-band convention; $+\deg\hat\dd$ would label the empty
+band.) $\mathcal{C}$ is the TKNN invariant \cite{tknn1982}: quantised, unable to
+change without closing the gap, and fixing the quantised Hall response. The
+canonical lattice realisations are Haldane's model \cite{haldane1988} and the
+Qi--Wu--Zhang (QWZ) model \cite{qwz2006},
+\begin{equation}
+d_x=\sin k_x,\quad d_y=\sin k_y,\quad d_z=m+\cos k_x+\cos k_y,
+\end{equation}
+which realises $\mathcal{C}=0,\mp1,0$ as $m$ passes through $-2,0,2$. QWZ has
+one parameter and three phases: far too small to be a search problem.
+
+\subsection{The generalized family used here}
+
+We keep the QWZ structure and add harmonics, which is physically the statement
+that hoppings extend beyond nearest neighbour:
+\begin{align}
+d_x(\kk;\theta) &= \sum_{n=1}^{H} a_n \sin(n k_x), \nonumber\\
+d_y(\kk;\theta) &= \sum_{n=1}^{H} b_n \sin(n k_y), \label{eq:model}\\
+d_z(\kk;\theta) &= m + \sum_{n=1}^{H} c_n\big(\cos(n k_x)+\cos(n k_y)\big)
+  + e\,\cos k_x\cos k_y, \nonumber
+\end{align}
+with $\theta=(a_1..a_H,\,b_1..b_H,\,c_1..c_H,\,m,\,e)\in\mathbb{R}^{3H+2}$
+normalised to the unit sphere ($\mathcal{C}$ is scale invariant). $H=16$ gives
+the \good{50-parameter} family used throughout.
+
+\subsection{Why the reachable set cannot be enumerated}
+\label{sec:inverse}
+
+This subsection states the property that makes the family a search problem
+rather than a lookup.
+
+\paragraph{An upper bound, proved.} Zeros of $d_x$: writing $z=e^{ik_x}$,
+$\sum_n a_n\sin(nk_x)$ has a numerator polynomial of degree $2H$ in $z$, hence
+at most $2H$ roots; likewise for $d_y$. The degree of $\hat\dd$ is the signed
+count of preimages of any regular value, so we may take the two poles of $S^2$:
+the $\le 4H^2$ points with $d_x=d_y=0$ split according to $\mathrm{sign}(d_z)$
+into $N_+$ mapping to the north pole and $N_-$ to the south, and
+\begin{equation}
+|\mathcal{C}| \;\le\; \min(N_+,N_-)\;\le\;\tfrac12(N_++N_-)\;\le\;2H^2=512 .
+\end{equation}
+The halving step is essential: the crossing count alone gives only $4H^2$.
+
+\paragraph{A construction, covering $12\%$.} Setting $a_n=b_n=c_n=1$ for a
+single harmonic $n$ and sweeping $m$ tiles the Brillouin zone $n\times n$ and
+gives $\mathcal{C}=\pm n^2$ (verified for $n=1\ldots16$ at $m=\pm1$, with
+$\mathcal{C}=0$ at $m=\pm3$). This is the only closed form we have. It reaches
+$H^2=256$ --- a \emph{factor of two below the bound} --- and produces only
+perfect squares.
+
+\paragraph{Composition fails.} Turning on two harmonics does not add their
+degrees. Measured at $m=+1$: $(n_1,n_2)=(2,3)$ gives $\mathcal{C}=8$, not
+$13$; $(3,5)$ gives $9$, not $34$; $(1,16)$ gives $44$, not $257$; $(1,2)$ is
+gapless and carries no label at all. The dependence of $\mathcal{C}$ on
+$\theta$ is not decomposable, so the natural route from the single-harmonic
+family to an arbitrary target is closed.
+
+\paragraph{Consequence.} Of the 155 sectors realised in a $10^6$-sample
+Gaussian reference, \good{18 are of the form $\pm n^2$ and 137 are not}. Of the
+283 sectors the walk realises, \good{24 are constructible and 259 are not}.
+There is no list to check off and no formula to invert: for a target such as
+$\mathcal{C}=137$ we know of no way to write down a $\theta$ that realises it.
+Search is the only access we have, which is exactly the condition under which
+an exploration method is worth measuring.
+
+\subsection{Labels: what is exact and what is not}
+\label{sec:labels}
+
+$H(\kk)$ is $2\times2$, so the occupied eigenvector is closed form: there is no
+diagonalisation, no convergence criterion and no finite-size effect. The
+\emph{label}, however, is a discretised functional. We evaluate $\mathcal{C}$
+by the Fukui--Hatsugai--Suzuki lattice method \cite{fhs2005}, which is gauge
+invariant and integer by construction, but whose convergence condition is that
+the Berry flux per plaquette be resolved --- not, as an earlier draft of this
+report asserted, that the grid resolve every harmonic of $\dd(\kk)$.
+
+At $H=16$ there are up to $4H^2=1024$ monopole crossings to resolve. Measured
+against $M=1536$ on $3000$ points:
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lrrr}
+\toprule
+label grid & agrees with $M{=}1536$ & mean $|\Delta\mathcal{C}|$ & max \\
+\midrule
+$M=96$ \ (earlier draft) & \bad{$\approx35\%$} & $3.2$ & 16 \\
+$M=192$ & $70\%$ & $1.1$ & 8 \\
+$M=384$ & $90$--$93\%$ & $0.3$ & 4 \\
+$M=768$ \ (used here) & \good{$98.2\%$} & $0.06$ & 4 \\
+\bottomrule
+\end{tabular}
+\caption{Convergence of the FHS integer at $H=16$. The $M=96$ grid is wrong on
+about two thirds of points, and its error \emph{compresses} $|\mathcal{C}|$
+toward zero.}
+\end{table}
+
+Two facts make this recoverable rather than fatal. First, the error is
+\good{symmetric between the two methods}: at $M=768$ the agreement with
+$M=1536$ is $98.3\%$ on the walk's $\theta$ and $98.2\%$ on the baseline's; at
+$M=96$ it is $36.8\%$ and $34.5\%$. The grid never favoured either side.
+Second, correcting it \emph{increased} every margin (\S\ref{sec:coverage}).
+All numbers in this report are at $M=768$; the residual $\approx2\%$
+disagreement with $M=1536$ is an acknowledged uncertainty.
+
+Validated against QWZ: $\mathcal{C}=0,-1,+1,0$ at $m=-3,-1,1,3$, reproduced by
+three independent implementations. That check validates the implementation at
+$H=1$ and says nothing about grid convergence at $H=16$.
+
+\subsection{No shortcut through the coordinate axes}
+
+Sampling the 50 coordinate axes (both signs) returns a single sector,
+$\mathcal{C}=0$. The mechanism is not that one dominant parameter gives a
+trivial configuration: \good{98 of the 100 signed axes are gapless}, so
+$\mathcal{C}$ is undefined and the point is discarded; only $\pm m$ is gapped,
+and it gives $0$. The residual advantage of a heavy-tailed measure over a
+Gaussian one is $1.19\times$.
+
+\section{The complementary 1D benchmark}
+\label{sec:bdi}
+
+The Chern family has an open inverse problem but a discretised label. A
+one-dimensional benchmark with the opposite profile --- an \emph{exact} label
+but a trivial inverse --- is reported separately \cite{spt2026} and is
+summarised here because the two together close each other's gaps.
+
+After a Jordan--Wigner transformation the generalized cluster chain is the
+long-range Kitaev chain in class BDI,
+$H=i\sum_j\sum_{\alpha=0}^{d-1}c_\alpha a_j b_{j+\alpha}$, $\mathbb{Z}$-classified
+by the winding number of $f(k)=\sum_\alpha c_\alpha e^{ik\alpha}$. Labels there
+are computed by \good{exact companion-matrix root counting}, so they carry
+\emph{no} lattice-resolution error of the kind quantified in
+\S\ref{sec:labels}. Against a rotation-invariant Gaussian baseline, over a
+$10\times4$ grid of $d\in[20,200]$ and budgets $10^4$--$3\times10^5$, the walk
+finds $5$--$25$ more phases at equal budget; in 36 of 40 cells its worst seed
+beats the baseline's best realisation; and the walk at $10^4$ solves exceeds
+uniform sampling at $3\times10^5$ --- a measured $30\times$ query advantage.
+
+Two cautions apply, and they are why that model cannot carry the discovery
+claim alone. First, \bad{its inverse problem is trivial}: $e_\alpha$ realises
+$\omega=\alpha$, so all $d$ sectors have one-line representatives and nothing
+is discovered in the sense of \S\ref{sec:inverse}. Second, that same structure
+makes the benchmark sensitive to the sampling measure --- coordinate-axis or
+heavy-tailed sampling obtains phases for free, and an advantage measured
+against those baselines does not survive a hidden orthogonal rotation of the
+couplings. Both are handled in \cite{spt2026} by using the rotation-invariant
+measure throughout and by decomposing the margin by starting point: the
+basis-free component (random start) is $+3.5,+3.5,+6.5,+11.0$ at
+$d=60,100,140,200$ --- positive, growing with $d$, and at $d=200$ larger than
+the bonus from starting at the trivial limit.
+
+\textbf{The division of labour.} The 1D model shows the efficiency advantage is
+neither a lattice artefact nor a basis artefact. The Chern model shows it
+delivers sectors that cannot be written down. Neither claim is available from
+the other model.
+
+\section{Method}
+
+\subsection{What the explorer does}
+
+The explorer is a gradient walk on the parameter sphere. At $\theta$ it
+evaluates the ground state, encodes it, and steps to increase a novelty
+objective:
+\begin{equation}
+\mathcal{L}(\theta) = -\big\|z(\theta)-\mu\big\|^2
+\;+\; w\sum_{i\in\text{trail}} \exp\!\left(-\frac{\|\theta-\theta_i\|^2}{s^2}\right),
+\label{eq:loss}
+\end{equation}
+where $z$ is the latent code of a small autoencoder trained on a cloud of
+states around the run's starting point, $\mu$ is that cloud's latent centroid,
+and the second term repels the walk from its own recent trajectory. Updates use
+Adam with cosine-decayed step size, gradient-norm clipping, and radial
+projection back onto the sphere.
+
+The state representation handed to the autoencoder is the normalised field
+$\hat\dd(\kk)$ on a Brillouin-zone grid, flattened --- the occupied band
+projector up to constants, $P_-(\kk)=\tfrac12(1-\hat\dd\cdot\boldsymbol\sigma)$.
+
+\subsection{Implementation}
+
+\begin{table}[h]\centering\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}p{3.1cm}p{7.4cm}l@{}}
+\toprule
+ & setting & value at $H=16$ \\
+\midrule
+\textbf{input to the AE} & $\hat\dd(\kk)$ on an $M\times M$ grid, flattened,
+   rescaled to unit norm & $M=32$, \good{3072 numbers} \\
+autoencoder & $[\,3072,\;32,\;16,\;32,\;3072\,]$, latent on the unit sphere
+   & $\approx0.2$M params \\
+AE training & fidelity loss $1-|\langle \hat x,x\rangle|^2$, Adam $10^{-3}$
+   & 1500 epochs \\
+AE training set & states in a Gaussian cloud of radius $r$ about the current
+   point & 30 states \\
+\midrule
+\textbf{label grid} & separate, converged BZ grid for Eq.~\eqref{eq:chern}
+   & \good{$768\times768$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{A known defect of the encoder grid.} At $H=16$ the AE grid satisfies
+$M=32=2H$ exactly, so $\sin(Hk)$ evaluated at $k=2\pi j/M$ vanishes
+identically. \bad{$a_{16}$ and $b_{16}$ are therefore invisible to the
+autoencoder}: perturbing $a_{16}$ by $0.3$ changes the AE input by
+$2\times10^{-15}$ while moving $\mathcal{C}$ from $-11$ to $+1$. Those two of
+the fifty directions receive \emph{exactly zero} gradient from the first term
+of Eq.~\eqref{eq:loss} and move only under trail repulsion and the sphere
+projection. The results below are therefore obtained with $48$ effective search
+directions; we did not tune $M$, and whether repairing it helps is untested.
+
+\textbf{Nothing in Eq.~\eqref{eq:loss} sees a phase label.} The objective is
+built from the state and from the trajectory's own history. The walk starts at
+$\theta=(0,\dots,0,m{=}1,0)$, which is $\mathcal{C}=0$ --- a choice requiring no
+knowledge of the phase diagram (``turn on only the mass term'') and which is,
+if anything, disadvantageous: the Chern ladder runs in both directions from
+$0$, so the walk must climb while random sampling lands directly at large
+$|\mathcal{C}|$.
+
+\subsection{Protocol}
+
+\begin{itemize}\itemsep1pt
+\item \textbf{Baseline:} plain Gaussian sampling of $\theta$, no measure
+engineering, recomputed in-job at exactly the explorer's budget with the
+identical label function and accept criterion.
+\item \textbf{Budget accounting.} One unit per $\theta$ at which the state is
+evaluated, for both sides. Bootstrap samples are charged. The \texttt{lazy}
+setting (one gradient solve per 5 parameter steps) grants no free observations:
+intermediate steps reuse the stale gradient and are never evaluated or
+labelled. Instrumented re-runs of all five production seeds recorded
+\good{exactly $300{,}000$ paid $\theta$ each, overshoot zero}.
+\item \textbf{What the walk gets for free.} Per unit of budget it also obtains
+$\nabla_\theta$ of the state by automatic differentiation, and evaluates the
+state on two grids ($M=32$ for the gradient, $M=768$ for the label) where the
+baseline evaluates one. Both are free for a $2\times2$ Bloch model. In a
+setting where the budget proxies real solver calls, a parameter-space gradient
+is \emph{not} one solve, and the equal-budget comparison should be read with
+that caveat. This is the load-bearing modelling assumption of the comparison.
+\item \textbf{Hyperparameters} were selected by a Hyperband bracket
+\cite{hyperband2018} ($27\to9\to3\to1$, $\eta=3$) over eight parameters sampled
+log-uniformly; because an exploration run is naturally \emph{continuable}, a
+promoted trial resumes its walk instead of restarting.
+\item \textbf{Selection bias.} The bracket reports the maximum of 27 trials each
+measured once; run-to-run standard deviation of the walk's count is $9$--$26$
+depending on budget ($25.7$ at $3\times10^5$), comparable to the effect, so the
+bracket estimate is biased upward. One bracket winner fell from $+9$ in-bracket
+to \bad{$-1$} on fresh seeds. All results below use seed family $200$--$204$,
+disjoint from the bracket's. \bad{An earlier draft also reported a
+$67{,}500$-budget row; that row was the set on which the winning configuration
+was chosen among three finalists and is omitted here as selection-contaminated.}
+\end{itemize}
+
+\section{Results}
+\label{sec:coverage}
+
+\subsection{Coverage at equal budget}
+
+The four budgets are nested prefixes of the same runs, so the comparison below
+is paired by construction.
+
+\begin{table}[h]\centering\small
+\begin{tabular}{rrrrl}
+\toprule
+budget & explorer & random & difference & per-seed differences \\
+\midrule
+$3\times10^4$  & 130 & 109 & $+21$ & $11,13,20,28,61$ \\
+$6\times10^4$  & 150 & 118 & $+32$ & $16,21,32,35,76$ \\
+$1.2\times10^5$& 175 & 124 & $+51$ & $29,38,50,51,101$ \\
+$1.8\times10^5$& 189 & 129 & $+60$ & $27,41,62,66,111$ \\
+$2.4\times10^5$& 199 & 135 & $+64$ & $32,45,68,68,120$ \\
+$3\times10^5$  & 207 & 139 & \good{$+68$} & $34,48,68,74,125$ \\
+\bottomrule
+\end{tabular}
+\caption{50 parameters, converged labels ($M=768$), median of \emph{five}
+fresh seeds; six of the ten measured $3\times10^4$-spaced budgets shown. Every
+seed is positive at every budget and every seed's margin is larger at
+$3\times10^5$ than at $3\times10^4$. At $3\times10^4$ granularity the margin is
+strictly monotone in 3 of 5 seeds; the other two fluctuate by at most $3$.}
+\end{table}
+
+\begin{table}[h]\centering\small
+\begin{tabular}{rrrrr}
+\toprule
+seed & explorer & random & difference & explorer's $\mathcal{C}$ range \\
+\midrule
+200 & 181 & 133 & $+48$ & $[-109,120]$ \\
+201 & 262 & 137 & $+125$ & $[-192,188]$ \\
+202 & 213 & 139 & $+74$ & $[-180,165]$ \\
+203 & 207 & 139 & $+68$ & $[-152,172]$ \\
+204 & 175 & 141 & $+34$ & $[-105,157]$ \\
+\bottomrule
+\end{tabular}
+\caption{Per-seed detail at $3\times10^5$. Seed-to-seed spread is large
+($\sigma=25.7$ for the explorer), which is why five seeds and min--max bands,
+not standard errors, are reported throughout.}
+\end{table}
+
+\subsection{Where the advantage lives}
+
+Resolving the same comparison by the volume each sector occupies under the
+Gaussian measure, using a $10^6$-sample reference relabelled at $M=768$
+(155 sectors):
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lrrrr}
+\toprule
+sector volume & sectors in bin & explorer & random & ratio \\
+\midrule
+$1$--$10\%$                  & 33 & 33.0 & 33.0 & $1.0\times$ \\
+$0.1$--$1\%$                 & 26 & 26.0 & 26.0 & $1.0\times$ \\
+$0.01$--$0.1\%$              & 29 & 29.0 & 29.0 & $1.0\times$ \\
+$10^{-5}$--$10^{-4}$         & 30 & 30.0 & 29.4 & $1.0\times$ \\
+$<10^{-5}$                   & 37 & 33.4 & 17.2 & $1.9\times$ \\
+never seen in $10^{6}$ samples & --- & \good{56.2} & 3.2 & \good{$17.6\times$} \\
+\bottomrule
+\end{tabular}
+\caption{Mean over five seeds at $3\times10^5$.}
+\end{table}
+
+The four upper bins are \emph{saturated}: they contain 118 sectors in total and
+a $3\times10^5$ random sample is expected to miss $0.2$ of them. Both methods
+therefore find essentially all of them, and this agreement cannot by itself
+discriminate between a different access mechanism and a better sampler --- no
+method can win where none can lose. What it does establish is a real negative:
+a correlated trajectory could easily have traded common-phase coverage for rare
+finds, and this one does not.
+
+The discriminating statement is the pooled comparison at unequal budget in the
+walk's disfavour:
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lrrr}
+\toprule
+source & queries/samples & sectors & $\mathcal{C}$ range \\
+\midrule
+all random sampling ($10^6$ Gaussian $+\ 5\times3\times10^5$ baselines)
+   & $2.5\times10^6$ & 160 & $[-86,108]$ \\
+explorer, five runs & $1.5\times10^6$ & \good{283} & \good{$[-192,188]$} \\
+union & & 283 & $[-192,188]$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Random sampling was given $1.7\times$ the walk's budget and still
+\good{contributes no sector the walk did not also find}, while \good{123
+sectors are found only by the walk}. More samples of the same measure do not
+close the gap --- and this claim can fail, which the saturated-bin comparison
+cannot.
+
+\subsection{Sectors with no known construction}
+
+Of the walk's 283 sectors, 24 are of the form $\pm n^2$ and thus have the
+closed-form representative of \S\ref{sec:inverse}; \good{259 do not}. The
+largest $|\mathcal{C}|$ realised is $192$, which is \emph{below} the best
+explicit construction ($256$) --- the walk does not extend the known range of
+$|\mathcal{C}|$. What it produces is $259$ distinct Chern numbers for which no
+parameter point was previously known.
+
+\section{Is this discovery?}
+
+\textbf{The walk is label-free; the count is post-hoc.} Nothing in
+Eq.~\eqref{eq:loss} reads $\mathcal{C}$. Chern numbers are evaluated afterwards,
+by us, for both methods alike --- so the comparison is fair, but the system is
+not \emph{aware}, in real time, that it has entered a new sector.
+
+\textbf{What it produces is nevertheless new.} By \S\ref{sec:inverse} there is
+no list to check off: for $92\%$ of the sectors it realises, no construction is
+known. In that operational sense the result \emph{is} discovery, in the way a
+survey instrument discovers an object its pipeline identifies after the
+exposure. What is missing is not novelty but \emph{online awareness}.
+
+That gap is closable here, though not as cheaply as an earlier draft claimed.
+The Chern number is computable from the state alone --- but not from the state
+the autoencoder sees: FHS on the $32\times32$ encoder input reproduces the
+converged label on only $9\%$ of points. Closing the loop requires the separate
+$768\times768$ field, which the walk already computes and pays for, at
+$98$\,ms per step. An explorer that closed this loop could \emph{use} its
+findings, repelling from the set of sectors already visited rather than from
+its own past positions. We note that this would make the method
+label-\emph{aware} and would require re-establishing the comparison against an
+active-learning baseline rather than against random sampling.
+
+\section{Limits}
+
+\begin{itemize}\itemsep2pt
+\item \textbf{Validated at 50 parameters.} At 20 and 32 parameters the explorer
+loses ($-4$, $-1$). At 98 the per-seed margin runs from \bad{$-49$ to $+160$}
+across 5--8 seeds depending on budget and \bad{no claim is supportable}; at 200
+the walk stalls every 40--50 steps (390--487 re-initialisations against one at
+50 parameters), traced to a stall criterion measured in the $\ell_\infty$ norm
+and therefore tightening as $\sqrt{d}$. At $d=200$ the un-budget-checked
+bootstrap can also overshoot the nominal budget by $\approx1.4\times10^4$
+queries; at $d=50$ the measured overshoot is zero.
+\item \textbf{Labels carry $\approx2\%$ residual error.} $M=768$ agrees with
+$M=1536$ on $98.2\%$ of points. The error is symmetric between methods
+(\S\ref{sec:labels}) but the absolute counts inherit it.
+\item \textbf{``Never seen in $10^6$'' is a membership criterion, not a volume
+bound.} It means volume $\lesssim3\times10^{-6}$. Random sampling itself lands
+in this bin $3.2$ times per run, so it is a resolution boundary, not a wall.
+\item \textbf{Rarity is defined under the Gaussian measure.} Another measure
+assigns different volumes. The comparison is self-consistent because Gaussian
+sampling \emph{is} the baseline, but the statement is relative to it.
+\item \textbf{A query is an evaluation, not a hard solve}, and the walk's
+gradient is free here (\S3.3). The budget is a proxy for solver calls in an
+interacting problem, not a measured wall-clock cost, and solver cost is out of
+scope.
+\item \textbf{The winning configuration lacks a mechanism.} Step size $1.24$
+($25\times$ the hand-chosen default), repulsion weight $w=0.73$ and length
+$s=0.083$, trail horizon 114 steps, one solve per 5 parameter steps, bootstrap
+radius $r=0.087$, block length 319, gradient clip $1.01$. Why large steps with
+\emph{short}-range repulsion and a \emph{compact} bootstrap cloud should work is
+unexplained; one-at-a-time scans had settled on $s=0.5$ and one solve per 30
+steps, which is worse.
+\item \textbf{Bracket outputs were not retained.} The Hyperband logs are not
+archived, so the selection history cannot be independently re-derived from
+stored artefacts.
+\end{itemize}
+
+\begin{thebibliography}{9}\small
+\bibitem{carrasquilla2017} J.~Carrasquilla and R.~G.~Melko,
+  \emph{Machine learning phases of matter}, Nat.\ Phys.\ \textbf{13}, 431 (2017).
+\bibitem{vanNieuwenburg2017} E.~P.~L.~van Nieuwenburg, Y.-H.~Liu, S.~D.~Huber,
+  \emph{Learning phase transitions by confusion}, Nat.\ Phys.\ \textbf{13}, 435 (2017).
+\bibitem{zhang2017} Y.~Zhang and E.-A.~Kim,
+  \emph{Quantum loop topography for machine learning}, Phys.\ Rev.\ Lett.\ \textbf{118}, 216401 (2017).
+\bibitem{rodriguez2019} J.~F.~Rodriguez-Nieva and M.~S.~Scheurer,
+  \emph{Identifying topological order through unsupervised machine learning},
+  Nat.\ Phys.\ \textbf{15}, 790 (2019).
+\bibitem{tknn1982} D.~J.~Thouless, M.~Kohmoto, M.~P.~Nightingale, M.~den Nijs,
+  Phys.\ Rev.\ Lett.\ \textbf{49}, 405 (1982).
+\bibitem{haldane1988} F.~D.~M.~Haldane, Phys.\ Rev.\ Lett.\ \textbf{61}, 2015 (1988).
+\bibitem{qwz2006} X.-L.~Qi, Y.-S.~Wu, S.-C.~Zhang, Phys.\ Rev.\ B \textbf{74}, 085308 (2006).
+\bibitem{fhs2005} T.~Fukui, Y.~Hatsugai, H.~Suzuki,
+  \emph{Chern numbers in discretized Brillouin zone}, J.\ Phys.\ Soc.\ Jpn.\ \textbf{74}, 1674 (2005).
+\bibitem{hyperband2018} L.~Li, K.~Jamieson, G.~DeSalvo, A.~Rostamizadeh, A.~Talwalkar,
+  \emph{Hyperband}, J.\ Mach.\ Learn.\ Res.\ \textbf{18}, 1 (2018).
+\bibitem{spt2026} Y.~Zhang, \emph{Autonomous discovery of symmetry-protected
+  topological phases: benchmark results}, companion report (2026).
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,244 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb,booktabs,graphicx,xcolor,microtype}
+\usepackage[colorlinks=true,linkcolor=black,urlcolor=blue!60!black,citecolor=black]{hyperref}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+\newcommand{\ok}{\textcolor{green!45!black}{\textbf{+}}}
+\setlength{\parskip}{2pt}
+
+\title{\vspace{-1.4cm}\Large Autonomous discovery of symmetry-protected topological phases:\\
+benchmark results}
+\author{\normalsize Yuxuan Zhang}
+\date{\normalsize 23 August 2026}
+
+\begin{document}
+\maketitle
+\vspace{-0.7cm}
+
+\begin{abstract}\noindent
+We benchmark a label-free autonomous agent against uniform random sampling on the task of
+discovering distinct topological phases of the long-range Kitaev chain in symmetry class BDI.
+Across a $10\times4$ grid of phase counts $d\in[20,200]$ and query budgets
+$10^4$--$3\times10^5$, the agent discovers 5--25 more phases than uniform sampling at equal
+budget, and the margin is \emph{independent of budget} across a 30-fold range. The agent at
+$10^4$ solves finds more phases than uniform sampling at $3\times10^5$ --- a measured
+$30\times$ query advantage. Measuring the induced probability of each winding sector with
+$4\times10^6$ uniform draws, we find the agent reaches sectors that those draws never hit
+($p<2.5\times10^{-7}$): 8 such sectors at $d=140$ from a random start, 21 from the trivial
+limit. We separate the rotation-invariant part of the advantage from the part that comes from
+knowing where the trivial limit is, and we list the claims from earlier drafts that these
+measurements retract.
+\end{abstract}
+
+\section{Setup}
+
+After a Jordan--Wigner transformation the generalized cluster chain is the long-range Kitaev
+chain in class BDI,
+\[
+H=i\sum_{j}\sum_{\alpha=0}^{d-1} c_\alpha\, a_j b_{j+\alpha},
+\qquad c=(t_0,-t_1,\dots,-t_{d-1}),\qquad \|t\|=1 .
+\]
+Class BDI is $\mathbb{Z}$-classified in one dimension. The invariant is the winding number of
+$f(k)=\sum_\alpha c_\alpha e^{ik\alpha}$, equal to the number of roots of the associated
+polynomial inside the unit disc; it takes $d$ values, with $e_0\leftrightarrow\omega=0$
+(trivial paramagnet) and $e_{d-1}\leftrightarrow\omega=d-1$. \textbf{All labels in this report
+are computed by exact companion-matrix root counting}, not by phase unwrapping on a $k$-grid,
+so they carry no lattice-resolution error.
+
+In the Neveu--Schwarz sector $M(t)$ is a twisted circulant, so the ground-state covariance ---
+the polar factor of $M$ --- is closed form,
+\[
+g(r)=\frac{1}{L}\sum_k \frac{f(k)}{|f(k)|}\,e^{-ikr},
+\]
+verified against explicit polar decomposition to $6\times10^{-15}$ with $\|g\|=1$ exactly.
+A ground state at $L=1000$ costs $2.2$\,ms. Throughout: $L=500$, lazy factor $k=30$
+(the ground state is re-solved, and one query spent, every 30th parameter step; the gradient is
+reused in between, and coverage is counted only at solved points).
+
+\paragraph{Baseline.} Uniform sampling draws $t$ from the rotation-invariant measure
+(Gaussian, normalised to the unit sphere) and labels each draw. This choice matters: sampling
+along coordinate axes or from heavy-tailed measures presupposes the coupling basis, and the
+advantage measured against those baselines does not survive a hidden orthogonal rotation.
+
+\paragraph{Accounting.} One query $=$ one ground-state solve, for both methods. Agent points
+are the median over 5 independent seeds (4 in the start-decomposition runs); uniform points are
+the median over 5 independent realisations. Bands are min--max, never standard errors.
+
+\section{The grid}
+
+\begin{table}[h]\centering\small
+\caption{Median phases discovered, agent ($e_0$ start) / uniform, and the margin. Bold where
+the agent's \emph{lowest} seed exceeds uniform's \emph{highest} realisation.}
+\begin{tabular}{r rrrr}
+\toprule
+$d$ & $10^4$ & $3\times10^4$ & $10^5$ & $3\times10^5$\\
+\midrule
+20 & 19/18 \ (+1) & 20/19 \ (+1) & 20/20 \ (0) & 20/20 \ (0)\\
+40 & 32/27 \ \textbf{(+5)} & 34/28 \ \textbf{(+6)} & 35/30 \ \textbf{(+5)} & 37/31 \ \textbf{(+6)}\\
+60 & 43/32 \ \textbf{(+11)} & 45/35 \ \textbf{(+10)} & 47/37 \ \textbf{(+10)} & 49/38 \ \textbf{(+11)}\\
+80 & 53/37 \ \textbf{(+16)} & 55/40 \ \textbf{(+15)} & 58/43 \ \textbf{(+15)} & 60/45 \ \textbf{(+15)}\\
+100 & 59/42 \ \textbf{(+17)} & 62/44 \ \textbf{(+18)} & 67/49 \ \textbf{(+18)} & 68/51 \ \textbf{(+17)}\\
+120 & 64/45 \ \textbf{(+19)} & 67/47 \ \textbf{(+20)} & 70/52 \ \textbf{(+18)} & 75/55 \ \textbf{(+20)}\\
+140 & 67/47 \ \textbf{(+20)} & 71/52 \ \textbf{(+19)} & 78/56 \ \textbf{(+22)} & 80/59 \ \textbf{(+21)}\\
+160 & 74/52 \ \textbf{(+22)} & 77/57 \ \textbf{(+20)} & 80/59 \ \textbf{(+21)} & 88/63 \ \textbf{(+25)}\\
+180 & 72/54 \ \textbf{(+18)} & 77/57 \ \textbf{(+20)} & 86/63 \ \textbf{(+23)} & 91/66 \ \textbf{(+25)}\\
+200 & 78/59 \ \textbf{(+19)} & 83/62 \ \textbf{(+21)} & 87/67 \ \textbf{(+20)} & 96/71 \ \textbf{(+25)}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+In 36 of the 40 cells the agent's lowest seed exceeds uniform's highest realisation. The four
+exceptions are all $d=20$, where both methods saturate at $20/20$ from $3\times10^4$ upwards;
+at $10^4$ the agent loses the worst case there ($18$ vs $20$), because a trajectory still has
+to travel while $10^4$ uniform draws already cover a 20-phase space.
+
+\paragraph{The margin does not come from the budget.} Over a 30-fold budget range the margin at
+fixed $d$ is flat to within seed noise ($d=200$: $+19,+21,+20,+25$). This closes the objection
+that the advantage is bought with compute: it is a difference in sampling efficiency, not in
+saturation.
+
+\section{Sampling efficiency}
+
+\begin{table}[h]\centering\small
+\caption{The agent at $10^4$ solves against uniform sampling at $3\times10^5$ --- a $30\times$
+budget difference in uniform's favour.}
+\begin{tabular}{r rrr}
+\toprule
+$d$ & agent @ $10^4$ & uniform @ $3\times10^5$ & surplus\\
+\midrule
+60 & 43 & 38 & \ok 5\\
+100 & 59 & 51 & \ok 8\\
+140 & 67 & 59 & \ok 8\\
+200 & 78 & 71 & \ok 7\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+$30\times$ is a \emph{measured lower bound}: $3\times10^5$ is the largest budget we ran.
+Uniform coverage grows logarithmically in budget (four-point fit, $R^2=0.95$--$0.99$, slope
+$0.6$--$3.7$ phases per $e$-fold); extrapolating that fit, uniform would need $10^6$--$10^7$
+draws to match the agent at $10^4$. The extrapolation assumes the logarithmic law survives past
+$3\times10^5$ and ignores the hard ceiling at $d$; only the $30\times$ is measured, and only the
+$30\times$ is claimed.
+
+\begin{figure}[h]\centering
+\includegraphics[width=\textwidth]{fig_main.pdf}
+\caption{\textbf{(a)} Coverage across the grid; agent solid, uniform dashed, colour encodes
+budget. \textbf{(b)} Coverage against budget at $d=200$: the agent's $10^4$ point lies above
+uniform's $3\times10^5$ point. \textbf{(c)} Decomposition of the margin by starting point.}
+\end{figure}
+
+\section{Where the margin comes from}
+
+An earlier draft concluded that ``the advantage is the corner start, not the exploration'',
+generalising from $d=60$ alone. That generalisation was wrong.
+
+\begin{table}[h]\centering\small
+\caption{Start decomposition at $10^5$ solves, median over 4 seeds. The basis-free component
+is the margin a \emph{random} start achieves; it grows with $d$ and is not capped.}
+\begin{tabular}{r rrr rr}
+\toprule
+$d$ & agent, $e_0$ & agent, random & uniform & basis-free & extra from $e_0$\\
+\midrule
+60 & 47.0 & 40.5 & 37 & \textbf{+3.5} & +6.5\\
+100 & 65.5 & 52.5 & 49 & \textbf{+3.5} & +13.0\\
+140 & 77.5 & 62.5 & 56 & \textbf{+6.5} & +15.0\\
+200 & 86.0 & 78.0 & 67 & \textbf{+11.0} & +8.0\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At $d=200$ the basis-free component exceeds the $e_0$ bonus. Worst-case separation for the
+random start holds at $d\geq100$ ($d=200$: worst agent seed 73 $>$ best uniform realisation 71;
+$d=140$: $60>58$; $d=100$: $51>49$); $d=60$ is a boundary tie ($38=38$) --- exactly the cell the
+earlier draft generalised from.
+
+The margin is therefore a sum of two terms: a rotation-invariant exploration gain that grows
+with $d$, and an additional gain from starting at the trivial limit. The second is legitimate
+physics --- any experiment starts from the decoupled limit --- but it is basis-dependent
+knowledge and is labelled as such throughout.
+
+The two starts are redundant but not identical. At $d=200$ the $e_0$ union over 4 seeds is 103
+sectors, the random-start union 93, their intersection 86 and their union 110 (Jaccard $0.78$):
+$e_0$ extends into the low tail, random starts into the high tail.
+
+\section{The agent reaches rare sectors}
+
+Uniform sampling induces a sharply peaked measure $p_\omega$ on the $d$ winding sectors. We
+measured it with $4\times10^6$ draws per $d$, giving a detection floor of $2.5\times10^{-7}$.
+
+\begin{table}[h]\centering\small
+\caption{Sectors reached. ``never seen'' counts sectors the agent reached that $4\times10^6$
+uniform draws never hit ($p<2.5\times10^{-7}$); $\omega=0$ is excluded from the $e_0$ column,
+since it is the starting point rather than a discovery.}
+\begin{tabular}{r rr rr rr}
+\toprule
+& \multicolumn{2}{c}{uniform} & \multicolumn{2}{c}{agent, $e_0$ @ $10^5$} & \multicolumn{2}{c}{agent, random @ $10^5$}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+$d$ & @ $10^5$ & @ $4\times10^6$ & reached & never seen & reached & never seen\\
+\midrule
+60 & 37 & 43 & 51 & 7 & 45 & 3\\
+100 & 49 & 56 & 74 & 18 & 58 & 5\\
+140 & 56 & 66 & 88 & 21 & 74 & 8\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]\centering
+\includegraphics[width=\textwidth]{fig_rarity.pdf}
+\caption{The measured sector distribution and the reach of each method. Filled dots mark
+sectors never seen in $4\times10^6$ uniform draws.}
+\end{figure}
+
+\paragraph{Two checks.} \emph{Are the rare labels artefacts?} No. Labels come from exact root
+counting, and the structure is coherent: uniform's support is a near-contiguous band and every
+extra sector the agent reaches sits on that band's shoulders. Label noise would produce
+scattered outliers, not a clean extension. \emph{Is each rare find a single lucky seed?} For
+the $e_0$ start, no: 14 of the 21 extra sectors at $d=140$ were found independently by at least
+2 of 4 seeds (7 of 7 at $d=60$). For the random start the individual finds are lottery-like
+(2 of 8 repeated), though the fact that \emph{some} tail sector is reached is stable.
+
+\paragraph{How rare.} The measured statement is $p<2.5\times10^{-7}$. A quadratic fit to
+$\log p_\omega$ (residual rms $0.03$--$0.04$ in log space over the measured range) extrapolates
+to far smaller values in the extreme tail, but that is an extrapolation over ten orders of
+magnitude with no reason for the large-deviation rate function to remain Gaussian. It is not
+claimed here.
+
+\paragraph{Mechanism, stated plainly.} The agent does not snipe isolated exotic sectors. Both
+methods cover a contiguous band around the mode; the agent's band is wider, and the sectors at
+its edge are quantitatively rare. Both halves of that sentence are needed.
+
+\section{Limitations and retractions}
+
+\begin{itemize}\itemsep2pt
+\item \textbf{Retracted:} ``the advantage is the corner start, not the exploration.''
+Superseded by the start decomposition above.
+\item \textbf{Retracted:} the earlier crossover result. That arm used a memory built on the
+accumulated phase $\phi$, which is topologically complete ($\phi_{\text{total}}=2\pi\omega$)
+and therefore label-equivalent.
+\item \textbf{Not isolated:} ``an underfit autoencoder explores better.'' $L$, bootstrap count,
+latent dimension and autoencoder epochs have each been ruled out as the cause of the observed
+difference; hidden width $32$ vs $64$ remains untested. Do not cite this claim.
+\item \textbf{Scope:} everything here exploits exact solvability of the free-fermion chain.
+The interacting ($\kappa$) case needs differentiable DMRG, which is established in the
+literature but not done here.
+\item \textbf{Scope:} $d=20$ carries no signal --- both methods saturate.
+\item \textbf{Open:} $d=200$ sector statistics were still running when this was compiled; the
+rarity table covers $d\in\{60,100,140\}$.
+\end{itemize}
+
+\section{Reproduction}
+
+\begin{tabular}{@{}ll@{}}
+\toprule
+\texttt{final\_res/f\_*.json} & agent runs, all $d$ and budgets\\
+\texttt{unif\_res/u\_*.json}, \texttt{u1\_*.json} & uniform baselines (consolidated in \texttt{unif\_all.json})\\
+\texttt{which\_res/w\_*.json} & start-type runs, with full sector sets\\
+\texttt{hist\_res/h\_*.json} & sector histograms, $4\times10^6$ draws per $d$\\
+\texttt{plot\_main.py}, \texttt{plot\_rarity.py} & the two figures\\
+\texttt{REPORT.md} \S23 & full narrative, including superseded sections\\
+\bottomrule
+\end{tabular}
+
+\end{document}

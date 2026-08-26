@@ -1,0 +1,18 @@
+{
+ "cfg_name": "w2",
+ "dim": 98,
+ "seed": 3,
+ "budget": 67500,
+ "agent": 218,
+ "uniform": 196,
+ "cfg": {
+  "lr": 1.24,
+  "trail_w": 0.73,
+  "trail_s": 0.083,
+  "trail_n": 114,
+  "lazy": 5,
+  "radius": 0.087,
+  "max_steps": 319,
+  "clip": 1.008
+ }
+}
