@@ -1,0 +1,118 @@
+{
+  "source_script": "z2gauge/scripts/plot_combined_active_phase_trajectory.py",
+  "source_script_sha256": "74e1a294c0d6c36f1faf07e1865e32457120c05caa1d6d3a51a84ff6a92b3276",
+  "source_files": [
+    "z2gauge/data/active_phase_hm0.09_20260518_115424.pkl",
+    "z2gauge/data/active_phase_hm0.10_20260518_115036.pkl",
+    "z2gauge/data/active_phase_hm0.75_20260604_092628.pkl"
+  ],
+  "original_output": "combined_active_phase_trajectory_z2gauge_Lx2Ly3.pdf",
+  "runs": [
+    {
+      "color": "tab:blue",
+      "label": "$\\lambda_0 = -0.09$",
+      "max_steps": 300
+    },
+    {
+      "color": "tab:orange",
+      "label": "$\\lambda_0 = -0.10$",
+      "max_steps": 450
+    },
+    {
+      "color": "tab:green",
+      "label": "$\\lambda_0 = -0.75$",
+      "max_steps": 800
+    }
+  ],
+  "arrays": {
+    "run0_values": {
+      "shape": [
+        301
+      ],
+      "dtype": "float64"
+    },
+    "run0_step": {
+      "shape": [
+        301
+      ],
+      "dtype": "int64"
+    },
+    "run0_normalized_step": {
+      "shape": [
+        301
+      ],
+      "dtype": "float64"
+    },
+    "run0_event": {
+      "shape": [
+        301
+      ],
+      "dtype": "<U6"
+    },
+    "run1_values": {
+      "shape": [
+        451
+      ],
+      "dtype": "float64"
+    },
+    "run1_step": {
+      "shape": [
+        451
+      ],
+      "dtype": "int64"
+    },
+    "run1_normalized_step": {
+      "shape": [
+        451
+      ],
+      "dtype": "float64"
+    },
+    "run1_event": {
+      "shape": [
+        451
+      ],
+      "dtype": "<U7"
+    },
+    "run2_values": {
+      "shape": [
+        801
+      ],
+      "dtype": "float64"
+    },
+    "run2_step": {
+      "shape": [
+        801
+      ],
+      "dtype": "int64"
+    },
+    "run2_normalized_step": {
+      "shape": [
+        801
+      ],
+      "dtype": "float64"
+    },
+    "run2_event": {
+      "shape": [
+        801
+      ],
+      "dtype": "<U7"
+    }
+  },
+  "source_sha256": {
+    "z2gauge/data/active_phase_hm0.09_20260518_115424.pkl": "e60933ce31994133e9ec28c560a3e7c720deda2724665125ac51695677eb4675",
+    "z2gauge/data/active_phase_hm0.10_20260518_115036.pkl": "28445121abb83e8931c4145fe43f248390eb265293bdfd0abd02b42c859aed90",
+    "z2gauge/data/active_phase_hm0.75_20260604_092628.pkl": "d203a56fba7a6339b05fcf66d1c42a2651f679e9cdb76ffeabdd4c57553f6d8b"
+  },
+  "axes": {
+    "xlim": [
+      -0.025,
+      1.035
+    ],
+    "ylim": [
+      -0.8070387750864029,
+      0.44781427681446073
+    ],
+    "xlabel": "step (normalized)",
+    "ylabel": "$\\lambda$"
+  }
+}

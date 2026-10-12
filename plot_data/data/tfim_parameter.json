@@ -1,0 +1,118 @@
+{
+  "source_script": "tfim_reorg/scripts/plot_combined_active_phase_trajectory.py",
+  "source_script_sha256": "5a67805e67f258447cde91cf89778ae1f1baf73c3b87b00b8a731cc0fb957255",
+  "source_files": [
+    "tfim_reorg/data/active_phase_hm0.50_20260513_210852.pkl",
+    "tfim_reorg/data/active_phase_hm0.30_20260511_155044.pkl",
+    "tfim_reorg/data/active_phase_hm1.50_20260512_101827.pkl"
+  ],
+  "original_output": "combined_active_phase_trajectory_20261012_090240.pdf",
+  "runs": [
+    {
+      "color": "tab:blue",
+      "label": "$g_0 = -0.5$",
+      "max_steps": 300
+    },
+    {
+      "color": "tab:orange",
+      "label": "$g_0 = -0.3$",
+      "max_steps": null
+    },
+    {
+      "color": "tab:green",
+      "label": "$g_0 = -1.5$",
+      "max_steps": null
+    }
+  ],
+  "arrays": {
+    "run0_values": {
+      "shape": [
+        301
+      ],
+      "dtype": "float64"
+    },
+    "run0_step": {
+      "shape": [
+        301
+      ],
+      "dtype": "int64"
+    },
+    "run0_normalized_step": {
+      "shape": [
+        301
+      ],
+      "dtype": "float64"
+    },
+    "run0_event": {
+      "shape": [
+        301
+      ],
+      "dtype": "<U7"
+    },
+    "run1_values": {
+      "shape": [
+        1206
+      ],
+      "dtype": "float64"
+    },
+    "run1_step": {
+      "shape": [
+        1206
+      ],
+      "dtype": "int64"
+    },
+    "run1_normalized_step": {
+      "shape": [
+        1206
+      ],
+      "dtype": "float64"
+    },
+    "run1_event": {
+      "shape": [
+        1206
+      ],
+      "dtype": "<U7"
+    },
+    "run2_values": {
+      "shape": [
+        409
+      ],
+      "dtype": "float64"
+    },
+    "run2_step": {
+      "shape": [
+        409
+      ],
+      "dtype": "int64"
+    },
+    "run2_normalized_step": {
+      "shape": [
+        409
+      ],
+      "dtype": "float64"
+    },
+    "run2_event": {
+      "shape": [
+        409
+      ],
+      "dtype": "<U7"
+    }
+  },
+  "source_sha256": {
+    "tfim_reorg/data/active_phase_hm0.50_20260513_210852.pkl": "10a7cb15c49c6bf34824e201eac80bec37d15666126b27b99f2c8beb96715ef1",
+    "tfim_reorg/data/active_phase_hm0.30_20260511_155044.pkl": "53939cec7a6f5e6c581792d9ca56060e131daa57f6af6262a7c39f2787b086ef",
+    "tfim_reorg/data/active_phase_hm1.50_20260512_101827.pkl": "bcee7da6058a987be6b824a62a5164166c57d842f3e02e29397ae41988227da8"
+  },
+  "axes": {
+    "xlim": [
+      -0.025,
+      1.035
+    ],
+    "ylim": [
+      -2.3474813158579746,
+      -0.20250088972104882
+    ],
+    "xlabel": "step (normalized)",
+    "ylabel": "$g$"
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "source_script": "z2gauge/scripts/overlay_traj_variedseed_phaselatent_style.py",
+  "source_script_sha256": "2f8091594c847b79cd09d6dc4b9794a4622fc7880d1c79bff7cb172ed31bc68e",
+  "source_files": [
+    "z2gauge/models/z2gauge_ite_autoencoder_variedseed_Lx2Ly3.pkl",
+    "z2gauge/data/data_ite_confined_2x3_h-1.5_to_-0.7_n500_variedseed.pkl",
+    "z2gauge/data/data_ite_deconfined_2x3_h-0.15_to_-0.1_n500_variedseed.pkl",
+    "z2gauge/data/traj_latents_502930.pkl",
+    "z2gauge/data/active_phase_hm0.75_20260604_092628.pkl"
+  ],
+  "original_output": "overlay_traj_502930_first800_variedseed_phaselatent_Lx2Ly3.pdf",
+  "arrays": {
+    "traj_pca": {
+      "shape": [
+        43,
+        2
+      ],
+      "dtype": "float32"
+    },
+    "var_ratio": {
+      "shape": [
+        2
+      ],
+      "dtype": "float32"
+    },
+    "Z_all": {
+      "shape": [
+        1000,
+        30
+      ],
+      "dtype": "float32"
+    },
+    "traj_h": {
+      "shape": [
+        43
+      ],
+      "dtype": "float64"
+    },
+    "train_pca": {
+      "shape": [
+        1000,
+        2
+      ],
+      "dtype": "float32"
+    },
+    "train_phase": {
+      "shape": [
+        1000
+      ],
+      "dtype": "<U10"
+    },
+    "pca_components": {
+      "shape": [
+        2,
+        30
+      ],
+      "dtype": "float32"
+    },
+    "z_mean": {
+      "shape": [
+        1,
+        30
+      ],
+      "dtype": "float32"
+    },
+    "trajectory_step": {
+      "shape": [
+        43
+      ],
+      "dtype": "int64"
+    },
+    "traj_latents": {
+      "shape": [
+        43,
+        30
+      ],
+      "dtype": "float32"
+    }
+  },
+  "source_sha256": {
+    "z2gauge/models/z2gauge_ite_autoencoder_variedseed_Lx2Ly3.pkl": "477edf24d26b005c59869bf9aaa4b4e6a46f06516094a603bf50f9432d16f2c4",
+    "z2gauge/data/data_ite_confined_2x3_h-1.5_to_-0.7_n500_variedseed.pkl": "b020d3232c55666dd742febe6c8fcdf9427eb66782aaffae306873e12bcef5a9",
+    "z2gauge/data/data_ite_deconfined_2x3_h-0.15_to_-0.1_n500_variedseed.pkl": "1ac3b3e12f9196f5aa68bf290d7ad9ed03269794377b13c1182f4d9a9c7c935e",
+    "z2gauge/data/traj_latents_502930.pkl": "c386ad69f2053f0197173bbacb550f783339e08107905d81f84e0b73f0edacee",
+    "z2gauge/data/active_phase_hm0.75_20260604_092628.pkl": "d203a56fba7a6339b05fcf66d1c42a2651f679e9cdb76ffeabdd4c57553f6d8b"
+  },
+  "axes": {
+    "xlim": [
+      -0.623052316904068,
+      1.1159747421741486
+    ],
+    "ylim": [
+      -0.8208959817886352,
+      0.7167988538742065
+    ],
+    "xlabel": "PC1 (17.4%)",
+    "ylabel": "PC2 (5.2%)"
+  }
+}

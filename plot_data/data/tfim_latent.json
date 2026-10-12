@@ -1,0 +1,109 @@
+{
+  "source_script": "tfim_reorg/scripts/analyze_phase_latent_from_data.py",
+  "source_script_sha256": "9212d9afa5434ad83e0399863d09b4b48742e7faa827ae7cfac93f96774e6210",
+  "source_files": [
+    "tfim_reorg/data/phase_latent_data_ae_ep1000_20260512_225654.pkl",
+    "tfim_reorg/data/active_phase_hm0.30_20260511_155044.pkl",
+    "tfim_reorg/data/data_ssb_debiased.pkl",
+    "tfim_reorg/data/data_para.pkl"
+  ],
+  "original_output": "phase_latent_data_pc12_scatter_hm0.30_20260511_155044_ep1000_20261012_090245.pdf",
+  "arrays": {
+    "traj_pca": {
+      "shape": [
+        41,
+        2
+      ],
+      "dtype": "float64"
+    },
+    "var_ratio": {
+      "shape": [
+        10
+      ],
+      "dtype": "float64"
+    },
+    "pca_components": {
+      "shape": [
+        10,
+        10
+      ],
+      "dtype": "float64"
+    },
+    "z_mean": {
+      "shape": [
+        1,
+        10
+      ],
+      "dtype": "float64"
+    },
+    "z_sub": {
+      "shape": [
+        1000,
+        10
+      ],
+      "dtype": "float64"
+    },
+    "traj_latents": {
+      "shape": [
+        41,
+        10
+      ],
+      "dtype": "float64"
+    },
+    "traj_h_values": {
+      "shape": [
+        41
+      ],
+      "dtype": "float64"
+    },
+    "traj_event_tags": {
+      "shape": [
+        41
+      ],
+      "dtype": "<U6"
+    },
+    "idx_sub": {
+      "shape": [
+        1000
+      ],
+      "dtype": "int64"
+    },
+    "train_pca": {
+      "shape": [
+        1000,
+        2
+      ],
+      "dtype": "float64"
+    },
+    "train_phase": {
+      "shape": [
+        1000
+      ],
+      "dtype": "<U4"
+    },
+    "trajectory_step": {
+      "shape": [
+        41
+      ],
+      "dtype": "int64"
+    }
+  },
+  "source_sha256": {
+    "tfim_reorg/data/phase_latent_data_ae_ep1000_20260512_225654.pkl": "c285e3b7c90dcab0f10681730bb138914f570f7b5bf4929b0262646c345c0190",
+    "tfim_reorg/data/active_phase_hm0.30_20260511_155044.pkl": "53939cec7a6f5e6c581792d9ca56060e131daa57f6af6262a7c39f2787b086ef",
+    "tfim_reorg/data/data_ssb_debiased.pkl": "feffab1d169fa74029f3206493eb3cd8aab6352eb0d10fc3b469ff399055c005",
+    "tfim_reorg/data/data_para.pkl": "3bdbbd00816ace2d59821081d080a554f2d958dd8008e9fb5d95906b35067fe1"
+  },
+  "axes": {
+    "xlim": [
+      -1.1112002221676942,
+      0.7803373669622361
+    ],
+    "ylim": [
+      -1.0383298280400486,
+      1.024787119276322
+    ],
+    "xlabel": "PC1 (53.5%)",
+    "ylabel": "PC2 (27.3%)"
+  }
+}

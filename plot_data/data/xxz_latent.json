@@ -1,0 +1,81 @@
+{
+  "source_script": "xxz_dmrg/scripts/plot_trajectory_in_latent.py",
+  "source_script_sha256": "d0585a49656e9a6a8583a95133045d043d9d4956307557b431e2792152f904c5",
+  "source_files": [
+    "xxz_dmrg/data/all_phases_latent_data_20260518_230716.pkl",
+    "xxz_dmrg/models/xxzhdmrg_autoencoder_params_all_phases_latent15_L20.pkl"
+  ],
+  "original_output": "trajectory_in_latent_437956.pdf",
+  "arrays": {
+    "pca_components": {
+      "shape": [
+        2,
+        15
+      ],
+      "dtype": "float64"
+    },
+    "Z_train": {
+      "shape": [
+        1250,
+        15
+      ],
+      "dtype": "float64"
+    },
+    "train_phase": {
+      "shape": [
+        1250
+      ],
+      "dtype": "<U6"
+    },
+    "train_pca": {
+      "shape": [
+        1250,
+        2
+      ],
+      "dtype": "float64"
+    },
+    "traj_pca": {
+      "shape": [
+        34,
+        2
+      ],
+      "dtype": "float64"
+    },
+    "var_ratio": {
+      "shape": [
+        2
+      ],
+      "dtype": "float64"
+    },
+    "z_mean": {
+      "shape": [
+        1,
+        15
+      ],
+      "dtype": "float64"
+    },
+    "traj_latents": {
+      "shape": [
+        34,
+        15
+      ],
+      "dtype": "float64"
+    }
+  },
+  "source_sha256": {
+    "xxz_dmrg/data/all_phases_latent_data_20260518_230716.pkl": "536b1894e0b689f46d8ca5722fcc4c3f03dff1ea78fd6dbbaf165eef5061c5fd",
+    "xxz_dmrg/models/xxzhdmrg_autoencoder_params_all_phases_latent15_L20.pkl": "72d7d15824e507e67a5076e4b2d2b7f6df2eb86e6fa0c0147dfcbae9398d6e9a"
+  },
+  "axes": {
+    "xlim": [
+      -0.8924498366473753,
+      0.8444709647706182
+    ],
+    "ylim": [
+      -0.5407957961222224,
+      0.7334645247900141
+    ],
+    "xlabel": "PC1 (51.2%)",
+    "ylabel": "PC2 (28.8%)"
+  }
+}

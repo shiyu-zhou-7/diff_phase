@@ -1,0 +1,82 @@
+{
+  "source_script": "xxz_dmrg/scripts/plot_combined_trajectory.py",
+  "source_script_sha256": "b26d593bc33ed90ae2b7c52433facd0cd6212d35121cec94b8069bcf7a5ebae7",
+  "source_files": [
+    "xxz_dmrg/models/active_phase_discovery_checkpoint_latest.pkl",
+    "xxz_dmrg/models/active_phase_resume_history_run_20260505_235151.pkl"
+  ],
+  "original_output": "combined_trajectory_437956_plus_prev.pdf",
+  "columns": [
+    "Delta",
+    "h"
+  ],
+  "arrays": {
+    "prev_params": {
+      "shape": [
+        1142,
+        2
+      ],
+      "dtype": "float64"
+    },
+    "run2_params": {
+      "shape": [
+        490,
+        2
+      ],
+      "dtype": "float64"
+    },
+    "nan_kick_origins": {
+      "shape": [
+        3,
+        2
+      ],
+      "dtype": "float64"
+    },
+    "ae_spots": {
+      "shape": [
+        1,
+        2
+      ],
+      "dtype": "float64"
+    },
+    "boundary_Delta": {
+      "shape": [
+        600
+      ],
+      "dtype": "float64"
+    },
+    "boundary_h": {
+      "shape": [
+        600
+      ],
+      "dtype": "float64"
+    },
+    "boundary_anchors": {
+      "shape": [
+        19,
+        2
+      ],
+      "dtype": "float64"
+    },
+    "boundary_h_at_minus1": {
+      "shape": [],
+      "dtype": "float64"
+    }
+  },
+  "source_sha256": {
+    "xxz_dmrg/models/active_phase_discovery_checkpoint_latest.pkl": "3c220d3667396cd481610c3961c0d3ee9bb56c0b4cbf3a0db2e95c2006023c1e",
+    "xxz_dmrg/models/active_phase_resume_history_run_20260505_235151.pkl": "aad977e0843548ba181e6debfb22ad7900b04d06a91b88e98892df000d97cd68"
+  },
+  "axes": {
+    "xlim": [
+      -2.0,
+      2.0
+    ],
+    "ylim": [
+      -2.0,
+      2.0
+    ],
+    "xlabel": "$h$",
+    "ylabel": "$\\Delta$"
+  }
+}
